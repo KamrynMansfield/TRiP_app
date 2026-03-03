@@ -47,3 +47,9 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# big acs and boudnary files
+data/census_tract_boundaries_NHGIS
+data/ACS_US
+data/ACS_US_pull
+
