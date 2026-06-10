@@ -5,3 +5,6 @@ rsconnect/
 
 # Local map tile cache
 rosm.cache/
+
+# macOS system files
+.DS_Store
