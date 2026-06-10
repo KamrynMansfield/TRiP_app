@@ -1,1 +1,7 @@
 .Rproj.user
+
+# Ignore Shiny deployment metadata
+rsconnect/
+
+# Local map tile cache
+rosm.cache/
