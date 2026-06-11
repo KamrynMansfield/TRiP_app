@@ -115,14 +115,14 @@ ui <- page_navbar(
                       dateInput("new_date", "Date of change", width = "150px",
                                 value = Sys.Date(),
                                 min = Sys.Date() - 10000,
-                                max = Sys.Date()), 
-                      numericInput("new_prev", "Previous fare", value = NA, min = 0, step = 0.25, width = "150px"), 
+                                max = Sys.Date()),
+                      numericInput("new_prev", "Previous fare", value = NA, min = 0, step = 0.25, width = "150px"),
                       numericInput("new_new", "New fare", value = NA, min = 0, step = 0.25, width = "150px")
                     ),
-                    div( 
-                      style = "display:flex; gap:.5rem; flex-wrap:wrap;", 
-                      actionButton("add", "Submit fare increase", class = "btn-primary"), 
-                      actionButton("delete", "Delete selected fare row", class = "btn-danger") 
+                    div(
+                      style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+                      actionButton("add", "Submit fare increase", class = "btn-primary"),
+                      actionButton("delete", "Delete selected fare row", class = "btn-danger")
                     )
                     ),
           conditionalPanel(
@@ -133,13 +133,13 @@ ui <- page_navbar(
             condition = "input.brt_question === 'yes'",
             h5("Inputing BRT Changes"),
             div(
-              style = "display:flex; gap:.5rem; flex-wrap:wrap;", 
+              style = "display:flex; gap:.5rem; flex-wrap:wrap;",
               uiOutput(outputId = "brt_date"),
               uiOutput(outputId = "brt_routes"),
-              div( 
-                style = "display:flex; gap:.5rem; flex-wrap:wrap;", 
-                actionButton("add_brt", "Submit BRT change", class = "btn-primary"), 
-                actionButton("delete_brt", "Delete selected BRT row", class = "btn-danger") 
+              div(
+                style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+                actionButton("add_brt", "Submit BRT change", class = "btn-primary"),
+                actionButton("delete_brt", "Delete selected BRT row", class = "btn-danger")
               )
             )
           ),
@@ -155,7 +155,7 @@ ui <- page_navbar(
           "Upload an excel file with monthly Unlinked Passenger Trips (UPT) and Vehicle Revenue Miles (VRM) for each route.",
           "(must follow format seen in example below)",
           "Due to unusual ridership patterns during the COVID19 pandemic, it is recommended that your data not go back past the year 2023.",
-          fileInput("upload_data", "", 
+          fileInput("upload_data", "",
                     accept = ".xlsx",
                     width = "100%"),
           hr(),
@@ -239,23 +239,7 @@ ui <- page_navbar(
             area = "area0",
             selectizeInput(inputId = "variables_forced",
                            label = "Adding Variables (optional)",
-                           choices = c("[VRM]" = "log_vrm",
-                                       "[Month]" = "factor(month)",
-                                       "[Year]" = "year_cent",
-                                       "[Year Squared]" = "year_cent^2",
-                                       "[Gas Price]" = "log_gas_price",
-                                       "[% No Vehicle Households]" = "log_perc_hshlds_noveh", 
-                                       "[% Workers Below Federal Poverty Line]" = "log_below_fpl", 
-                                       "[% Commuting by Car]" = "log_perc_car", 
-                                       "[% Commuting by Taxi]" = "log_perc_taxicab", 
-                                       "[% Work From Home]" = "log_perc_wfh", 
-                                       "[% Female Workers]" = "log_perc_female", 
-                                       "[% Workers Between 100-150% of Federal Povery Level]" = "log_fpl_100_150", 
-                                       "[% Workers in Renter Occupied Housing Units]" = "log_perc_renter_occupied", 
-                                       "[Labor Participation Rate]" = "log_labor_part_rate", 
-                                       "[Unemployment Rate]" = "log_unemp_rate",
-                                       "[Bus Rapid Transit]" = "brt",
-                                       "[Adult Base Fare]" = "fare"),
+                           choices = NULL,
                            selected = NULL,
                            multiple = TRUE,
                            width = "100%"
@@ -273,7 +257,7 @@ ui <- page_navbar(
                 multiple = TRUE,
                 width = "100%"
               ),
-                                                                                                                                                                                                                    
+
               input_task_button("run_model_stepwise", "Redo Stepwise Regression")
             )
           ),
@@ -375,11 +359,11 @@ ui <- page_navbar(
             selected = "new",
             inline = TRUE
           ),
-          
+
           selectInput("route_selected", "Route", choices = NULL),
-          
+
           actionButton("save_route_scenario", "Save", class = "btn-primary"),
-          
+
           DTOutput("dtScenarios")
         )
       ),
@@ -421,7 +405,7 @@ ui <- page_navbar(
           )
         )
       ),
-      grid_card(area = "area1", 
+      grid_card(area = "area1",
                 plotOutput("viz_plot") #,
                 # plotOutput("viz_plot_2")
     )
@@ -465,7 +449,7 @@ ui <- page_navbar(
 
 #### SERVER ####
 server <- function(input, output, session) {
-  
+
   output$textWarn1 <- renderText({
     if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
       paste("This app might be useful to your agency :)")
@@ -473,7 +457,7 @@ server <- function(input, output, session) {
       paste(input$qRedesign)
     }
   })
-  
+
   output$textWarn2 <- renderText({
     if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
       paste("")
@@ -481,7 +465,7 @@ server <- function(input, output, session) {
       paste(input$qUniversity)
     }
   })
-  
+
   output$textWarn3 <- renderText({
     if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
       paste("")
@@ -489,104 +473,106 @@ server <- function(input, output, session) {
       paste(input$qRail)
     }
   })
-  
+
   #### PLOTTING GTFS ROUTES ####
-  
+
   # getting routes sf from gtfs
   route_sf <- reactive({
     req(input$upload_routes) # Ensure a file is uploaded
     routes <- input$upload_routes$datapath
     get_gtfs_routes(routes)
   })
-  
+
   # getting the counties it touches
   county_sf <- reactive({
     find_overlapping_counties(route_sf())
   })
-  
-  # once someone uploads the gtfs, 
+
+  # once someone uploads the gtfs,
   observeEvent(input$upload_routes, {
-    
+
     output$route_map <- renderLeaflet({
       make_route_leaflet(route_sf(),county_sf())
     })
-    
+
     output$acs_description <- renderText({
       "Your transit routes and the counties they cross are displayed to the right. If these are the routes and counties you expected, you are ready for the next step. Click the button below to pull the census data that will be used in the model."
     })
-    
+
     # Once finished, render the button to pull acs data
     output$acs_button_placeholder <- renderUI({
       input_task_button("get_acs", "Get Census Data")
     })
   })
-  
+
   # display a message stating that the plot is rendering
-  observe({ 
-    showNotification( 
-      paste("Plotting routes. Please wait a moment."), 
-      type = "message", 
+  observe({
+    showNotification(
+      paste("Plotting routes. Please wait a moment."),
+      type = "message",
       duration = 20
-    ) 
-  }) |> 
-    bindEvent(input$upload_routes) 
-  
+    )
+  }) |>
+    bindEvent(input$upload_routes)
+
 
   #### GET AND PREPARE CENSUS DATA ####
-  
+
   acs_data <- reactiveVal(NULL)
-  
+
   observeEvent(input$get_acs, {
     req(input$upload_data$datapath)
-    
+
     vrm_data <- read_excel(input$upload_data$datapath)
-    
+
     year_start <- min(vrm_data$year, na.rm = T)
     month_start <- vrm_data |>
       dplyr::filter(year == year_start) |>
       dplyr::pull(month) |>
       min(na.rm = TRUE)
     month_start <- paste0(year_start, "-", month_start)
-    
-    
+
+
     year_end <- max(vrm_data$year, na.rm = T)
     month_end <- vrm_data |>
       dplyr::filter(year == year_end) |>
       dplyr::pull(month) |>
       max(na.rm = TRUE)
     month_end <- paste0(year_end, "-", month_end)
-    
+
+    # This prevents it from looking for ACS data above 2024.
+    # TODO: It sill need to be updated to 2025 when the ACS 2025 data is available
     if(year_end > 2024){
       year_end_val <- 2024
     } else {
       year_end_val <- year_end
     }
-    
+
     res <- withProgress(message = "Organizing Census Data...",
                         detail = "this could take a minute or two", value = 0, {
-                          
+
                           incProgress(0.05, detail = "Starting process")
                           route_geom  <- route_sf()
                           county_info <- county_sf()
-                          
+
                           state_fps  <- unique(county_info$STATEFP)
                           county_fps <- unique(county_info$COUNTYFP)
-                          year_vals  <- year_start:year_end_val
-                          
+                          year_vals  <- (year_start-1):year_end_val
+
                           incProgress(0.20, detail = "Pulling in census tracts")
                           census_tract_geom <- get_tract_geometry(state_fps, county_fps, year_vals)
-                          
+
                           incProgress(0.15, detail = "Finding tracts that intersect bus routes")
                           tract_buffer_data <- create_intersecting_tract_percentages(
                             census_tract_geom, route_geom
                           )
-                          
+
                           incProgress(0.30, detail = "Pulling ACS data")
                           pulled_acs <- pull_acs_data(county_sf = county_info, years = year_vals)
-                          
+
                           incProgress(0.05, detail = "Organizing ACS data")
                           organized_acs <- combine_acs_data(pulled_acs)
-                          
+
                           incProgress(0.20, detail = "Preparing data for model")
                           create_final_acs_data(
                             combined_acs_data   = organized_acs,
@@ -595,13 +581,13 @@ server <- function(input, output, session) {
                             end_month           = month_end
                           )
                         })
-    
+
     acs_data(res)  # store result so outputs can use it
-    
+
     bslib::nav_select("main_nav", "pan_4")
   })
-  
-  
+
+
   output$example_input <- renderTable({
     upt <- read_excel("data/data_example.xlsx") |>
       mutate(month = as.character(month),
@@ -610,10 +596,10 @@ server <- function(input, output, session) {
              vrm = round(vrm,1)) |>
       filter(month == 1) |>
       head()
-    
+
     print(upt)
   }, bordered = TRUE)
-  
+
   output$tableVRM <- renderTable({
     vrm <- data.frame(month = rep(1:12,2),
                       year = as.character(c(rep(2024,12),rep(2025,12))),
@@ -624,24 +610,34 @@ server <- function(input, output, session) {
     names(vrm) <- c("month","year","12","20","30","31")
     print(vrm)
   })
-  
-  
-  
-  
+
+
+
+
   # Read and modify the uploaded data
   processed_data <- reactive({
     req(input$upload_data) # Ensure a file is uploaded
     df <- read_excel(input$upload_data$datapath)
 
-    # Example Modification: Add a 'Processed' column
-    df$Processed <- "Yes"
     return(df)
   })
-  
-  
+
+  addnl_vars <- reactive({
+    req(processed_data())
+    df <- processed_data()
+
+    extra_variables <- names(df)[!names(df) %in% c("route_id","month","year","upt","vrm")]
+
+    addnl_vars <- paste0("log_",extra_variables)
+    names(addnl_vars) <- extra_variables
+
+    addnl_vars
+  })
+
+
   #### Copied AI code for fare change table ####
-  
-  
+
+
   # Current agency working table (no agency column yet; add on save)
   current <- reactiveVal(
     data.frame(
@@ -651,11 +647,11 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     )
   )
-  
+
   observeEvent(input$add, {
     req(input$new_date)
     req(!is.na(input$new_prev), !is.na(input$new_new))
-    
+
     df <- current()
     df <- rbind(df, data.frame(
       change_date = as.Date(input$new_date),
@@ -663,13 +659,13 @@ server <- function(input, output, session) {
       new_fare    = as.numeric(input$new_new),
       stringsAsFactors = FALSE
     ))
-    
+
     # Optional: keep sorted by date
     df <- df[order(df$change_date), ]
-    
+
     current(df)
   })
-  
+
   # Render current table (editable)
   output$tbl <- renderDT({
     datatable(
@@ -683,18 +679,18 @@ server <- function(input, output, session) {
       formatStyle('prev_fare', backgroundColor = 'lightgrey') |>
       formatStyle('new_fare', backgroundColor = 'lightgrey')
   })
-  
+
   # Apply cell edits from DT to current()
   observeEvent(input$tbl_cell_edit, {
     info <- input$tbl_cell_edit
     df <- current()
-    
+
     i <- info$row
     j <- info$col + 1
     v <- info$value
-    
+
     colname <- names(df)[j]
-    
+
     if (colname == "change_date") {
       # Expect yyyy-mm-dd; coerce to Date
       v2 <- as.Date(v)
@@ -705,13 +701,13 @@ server <- function(input, output, session) {
       if (is.na(v2)) return()
       df[i, j] <- v2
     }
-    
+
     # Optional: re-sort after editing date
     df <- df[order(df$change_date), ]
-    
+
     current(df)
   })
-  
+
   # Delete selected rows
   observeEvent(input$delete, {
     sel <- input$tbl_rows_selected
@@ -720,7 +716,7 @@ server <- function(input, output, session) {
     df <- df[-sel, , drop = FALSE]
     current(df)
   })
-  
+
   observeEvent(input$has_fare_changes, {
     if (input$has_fare_changes == "no") {
       # clear your current fare-change table
@@ -733,13 +729,13 @@ server <- function(input, output, session) {
   })
 
 #### BRT CHNAGES CODE ####
-  
+
 
   # add inputs for a brt change
   observeEvent(input$brt_question, {
-    
+
     if (input$brt_question == "yes"){
-      
+
       # render the date input
       output$brt_date <- renderUI({
         dateInput(
@@ -750,49 +746,49 @@ server <- function(input, output, session) {
           max = Sys.Date(),
           width = "150px")
       })
-      
+
       # when I need to find the month and year I will do something like this
       # year(input$brt_change_date)
       # month(input$brt_change_date)
-      
+
       input_df <- processed_data()
       routes <- input_df$route_id
-      
+
       if (!is.null(routes)){
         route_list <- as.list(routes)
       } else{
         route_list <- list("no","routes","found")
       }
-    
+
       output$brt_routes <- renderUI({
-        selectizeInput( 
-          "select_brt_routes", 
-          "Routes converted to BRT", 
-          route_list, 
+        selectizeInput(
+          "select_brt_routes",
+          "Routes converted to BRT",
+          route_list,
           multiple = TRUE,
           width = "200px"
         )
       })
-      
+
     } else{
       # render the date input
       output$brt_date <- renderUI({
         ""
       })
-      
+
       output$brt_routes <- renderUI({
         ""
       })
-      
-      
-      
+
+
+
     }
-    
+
   })
-  
-  
+
+
   ### COPIED AI RESPONSE FOR BRT STUFF ###
-  
+
   # Current agency working table
   current_brt <- reactiveVal(
     data.frame(
@@ -801,24 +797,24 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     )
   )
-  
+
   observeEvent(input$add_brt, {
     req(input$brt_change_date)
     req(!is.na(input$select_brt_routes))
-    
+
     df <- current_brt()
     df <- rbind(df, data.frame(
       change_date_brt = as.Date(input$brt_change_date),
       routes_brt   = paste(as.character(input$select_brt_routes), collapse = ","),
       stringsAsFactors = FALSE
     ))
-    
+
     # Optional: keep sorted by date
     df <- df[order(df$change_date_brt), ]
-    
+
     current_brt(df)
   })
-  
+
   # Render current_brt table (editable)
   output$tbl_brt <- renderDT({
     datatable(
@@ -831,31 +827,31 @@ server <- function(input, output, session) {
       formatStyle('change_date_brt', backgroundColor = 'lightgrey') |>
       formatStyle('routes_brt', backgroundColor = 'lightgrey')
   })
-  
+
   # Apply cell edits from DT to current_brt()
   observeEvent(input$tbl_brt_cell_edit, {
     info <- input$tbl_brt_cell_edit
     df <- current_brt()
-    
+
     i <- info$row
     j <- info$col + 1
     v <- info$value
-    
+
     colname <- names(df)[j]
-    
+
     if (colname == "change_date_brt") {
       # Expect yyyy-mm-dd; coerce to Date
       v2 <- as.Date(v)
       if (is.na(v2)) return()  # ignore invalid edits
       df[i, j] <- v2
     }
-    
+
     # Optional: re-sort after editing date
     df <- df[order(df$change_date_brt), ]
-    
+
     current_brt(df)
   })
-  
+
   # Delete selected rows
   observeEvent(input$delete_brt, {
     sel <- input$tbl_brt_rows_selected
@@ -864,7 +860,7 @@ server <- function(input, output, session) {
     df <- df[-sel, , drop = FALSE]
     current_brt(df)
   })
-  
+
   observeEvent(input$brt_question, {
     if (input$brt_question == "no") {
       # clear your current_brt fare-change table
@@ -875,12 +871,12 @@ server <- function(input, output, session) {
   })
 
 
-  
+
   brt_tbl <- reactive({
     req(current_brt())
-    
+
     brt_df <- current_brt()
-    
+
     if (nrow(brt_df) == 0){
       updated_brt_df <- NULL
     } else {
@@ -889,64 +885,69 @@ server <- function(input, output, session) {
         new_df <- data.frame(change_date_brt = brt_df$change_date_brt[[row_num]], routes_brt = unlist(strsplit(brt_df$routes_brt[[row_num]],",")))
         df_list[[row_num]] <- new_df
       }
-      
+
       updated_brt_df <- bind_rows(df_list)
     }
-    
+
     updated_brt_df
-    
+
   })
-  
+
   fare_tbl <- reactive({
     req(current())
-    
+
     fare_df <- current()
-    
+
     if (nrow(fare_df) == 0){
       updated_fare_df <- NULL
     } else {
       updated_fare_df <- fare_df
     }
-    
+
     updated_fare_df
-    
+
   })
-  
-  
+
+
   # get first model after user inputs the files
   first_model <- reactive({ # first model
     req(input$upload_data$datapath)
     req(acs_data())
+    req(addnl_vars())
     acs <- acs_data()
     # acs <- acs_data
-    # xl_data <- "../data/MARTA Data/marta_input_data_2016_2018.xlsx"
+    # xl_data <- "../data/MARTA Data/marta_input_data_all.xlsx"
+    vars <- c("[VRM]" = "log_vrm",
+                  "[Month]" = "factor(month)",
+                  "[Year]" = "year_cent",
+                  "[Year Squared]" = "year_cent^2",
+                  "[Gas Price]" = "log_gas_price",
+                  "[% No Vehicle Households]" = "log_perc_hshlds_noveh",
+                  "[% Workers Below Federal Poverty Line]" = "log_below_fpl",
+                  "[% Commuting by Car]" = "log_perc_car",
+                  "[% Commuting by Taxi]" = "log_perc_taxicab",
+                  "[% Work From Home]" = "log_perc_wfh",
+                  "[% Female Workers]" = "log_perc_female",
+                  "[% Workers Between 100-150% of Federal Povery Level]" = "log_fpl_100_150",
+                  "[% Workers in Renter Occupied Housing Units]" = "log_perc_renter_occupied",
+                  "[Labor Participation Rate]" = "log_labor_part_rate",
+                  "[Unemployment Rate]" = "log_unemp_rate",
+                  "[Bus Rapid Transit]" = "brt",
+                  "[Adult Base Fare]" = "log_fare",
+             addnl_vars())
+
+
     create_regression_model(data_xlsx = input$upload_data$datapath,
                             acs_data = acs,
                             gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
-                            variables = c("[VRM]" = "log_vrm",
-                                          "[Month]" = "factor(month)",
-                                          "[Year]" = "year_cent",
-                                          "[Year Squared]" = "year_cent^2",
-                                          "[Gas Price]" = "log_gas_price",
-                                          "[% No Vehicle Households]" = "log_perc_hshlds_noveh", 
-                                          "[% Workers Below Federal Poverty Line]" = "log_below_fpl", 
-                                          "[% Commuting by Car]" = "log_perc_car", 
-                                          "[% Commuting by Taxi]" = "log_perc_taxicab", 
-                                          "[% Work From Home]" = "log_perc_wfh", 
-                                          "[% Female Workers]" = "log_perc_female", 
-                                          "[% Workers Between 100-150% of Federal Povery Level]" = "log_fpl_100_150", 
-                                          "[% Workers in Renter Occupied Housing Units]" = "log_perc_renter_occupied", 
-                                          "[Labor Participation Rate]" = "log_labor_part_rate", 
-                                          "[Unemployment Rate]" = "log_unemp_rate",
-                                          "[Bus Rapid Transit]" = "brt",
-                                          "[Adult Base Fare]" = "fare"),
+                            variables = vars,
                             fare_df = fare_tbl(), # TODO: this doesn't seem to be working
                             brt_df = brt_tbl()) # TODO: this doesn't seem to be working
   })
-  
+
   output$tbl_mod_stepwise <- renderDT({
     created_model <- first_model() # first model
-    
+
     name_key <- c("VRM" = "log_vrm",
                   "February" = "factor(month)2",
                   "March" = "factor(month)3",
@@ -962,25 +963,31 @@ server <- function(input, output, session) {
                   "Year" = "year_cent",
                   "Year Squared" = "I(year_cent^2)",
                   "Gas Price" = "log_gas_price",
-                  "% No Vehicle Households" = "log_perc_hshlds_noveh", 
-                  "% Workers Below Federal Poverty Line" = "log_below_fpl", 
-                  "% Commuting by Car" = "log_perc_car", 
-                  "% Commuting by Taxi" = "log_perc_taxicab", 
-                  "% Work From Home" = "log_perc_wfh", 
-                  "% Female Workers" = "log_perc_female", 
-                  "% Workers Between 100-150% of Federal Povery Level" = "log_fpl_100_150", 
-                  "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied", 
-                  "Labor Participation Rate" = "log_labor_part_rate", 
+                  "% No Vehicle Households" = "log_perc_hshlds_noveh",
+                  "% Workers Below Federal Poverty Line" = "log_below_fpl",
+                  "% Commuting by Car" = "log_perc_car",
+                  "% Commuting by Taxi" = "log_perc_taxicab",
+                  "% Work From Home" = "log_perc_wfh",
+                  "% Female Workers" = "log_perc_female",
+                  "% Workers Between 100-150% of Federal Povery Level" = "log_fpl_100_150",
+                  "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied",
+                  "Labor Participation Rate" = "log_labor_part_rate",
                   "Unemployment Rate" = "log_unemp_rate",
                   "Is Bus Rapid Transit" = "brtTRUE",
-                  "Fare" = "fare") 
-    
-    vars <- names(name_key[name_key %in% names(created_model$coefficients)])
-    
-    table <- data.frame("Variable" = vars,
+                  "Fare" = "log_fare",
+                  addnl_vars())
+
+    var_table <- data.frame("Variable" = names(name_key),
+                           "vars" = unname(name_key))
+
+    coef_table <- data.frame("vars" = names(created_model$coefficients),
                         "Coeff" = round(created_model$coefficients,3),
-                        "P-value" = round(fixest::pvalue(created_model), 3))
-    
+                        "P.value" = round(fixest::pvalue(created_model), 3))
+
+    table <- coef_table |>
+      left_join(var_table, by = "vars") |>
+      select("Variable", "Coeff", "P.value")
+
      table |>
       datatable(selection = "none",
                 options = list(
@@ -991,34 +998,35 @@ server <- function(input, output, session) {
                   rownames = FALSE
                 ))
   })
-  
+
   # Create the proxy handle for the output table
   proxy <- dataTableProxy("tbl_mod_stepwise")
-  
+
   # once vrm is uploaded, then it will update the selections for the model creation on the next page
   observeEvent(acs_data(),
                {
                  req(acs_data())
                  variables_used <- names(first_model()$coefficients) #first model
-                 
+
                  all_vars <- c("[VRM]" = "log_vrm",
                                "[Month]" = "factor(month)",
                                "[Year]" = "year_cent",
                                "[Year Squared]" = "year_cent^2",
                                "[Gas Price]" = "log_gas_price",
-                               "[% No Vehicle Households]" = "log_perc_hshlds_noveh", 
-                               "[% Workers Below Federal Poverty Line]" = "log_below_fpl", 
-                               "[% Commuting by Car]" = "log_perc_car", 
-                               "[% Commuting by Taxi]" = "log_perc_taxicab", 
-                               "[% Work From Home]" = "log_perc_wfh", 
-                               "[% Female Workers]" = "log_perc_female", 
-                               "[% Workers Between 100-150% of Federal Povery Level]" = "log_fpl_100_150", 
-                               "[% Workers in Renter Occupied Housing Units]" = "log_perc_renter_occupied", 
-                               "[Labor Participation Rate]" = "log_labor_part_rate", 
+                               "[% No Vehicle Households]" = "log_perc_hshlds_noveh",
+                               "[% Workers Below Federal Poverty Line]" = "log_below_fpl",
+                               "[% Commuting by Car]" = "log_perc_car",
+                               "[% Commuting by Taxi]" = "log_perc_taxicab",
+                               "[% Work From Home]" = "log_perc_wfh",
+                               "[% Female Workers]" = "log_perc_female",
+                               "[% Workers Between 100-150% of Federal Povery Level]" = "log_fpl_100_150",
+                               "[% Workers in Renter Occupied Housing Units]" = "log_perc_renter_occupied",
+                               "[Labor Participation Rate]" = "log_labor_part_rate",
                                "[Unemployment Rate]" = "log_unemp_rate",
                                "[Bus Rapid Transit]" = "brt",
-                               "[Adult Base Fare]" = "fare")
-                 
+                               "[Adult Base Fare]" = "log_fare",
+                               addnl_vars())
+
                  if (TRUE %in% grepl("month",variables_used)){
                    new_selected <- c(variables_used[grepl("month",variables_used) == FALSE], "factor(month)")
                  } else{
@@ -1027,18 +1035,19 @@ server <- function(input, output, session) {
                  if (TRUE %in% grepl("year_cent^2",new_selected,fixed = TRUE)){
                    new_selected <- c(new_selected[grepl("year_cent^2",new_selected,fixed = TRUE) == FALSE], "year_cent^2")
                  }
-                 
+
                  new_vars <- all_vars[all_vars %in% new_selected]
-                 
+
                  updateSelectizeInput(inputId = "variables",
                                       choices = new_vars,
                                       selected = new_vars)
-                 
+
                  updateSelectizeInput(inputId = "variables_forced",
+                                      choices = all_vars,
                                       selected = new_vars)
-                 
+
                })
-  
+
   # does the stepwise regression when the button is clicked
   model <- eventReactive(
     input$run_model_stepwise,
@@ -1053,7 +1062,7 @@ server <- function(input, output, session) {
                               fare_df = fare_tbl(), # TODO: this doesn't seem to be working
                               brt_df = brt_tbl())
     })
-  
+
   # creates the regression model when the button is clicked (does not get rid of any coefficients)
   model_forced <- eventReactive(
     input$run_model_forced,
@@ -1068,12 +1077,12 @@ server <- function(input, output, session) {
                               fare_df = fare_tbl(), # TODO: this doesn't seem to be working
                               brt_df = brt_tbl())
     })
-  
+
   # Use the proxy to swap in updated data frame
   observeEvent(input$run_model_stepwise, {
-    
+
     created_model <- model()
-    
+
     name_key <- c("VRM" = "log_vrm",
                   "February" = "factor(month)2",
                   "March" = "factor(month)3",
@@ -1089,44 +1098,45 @@ server <- function(input, output, session) {
                   "Year" = "year_cent",
                   "Year Squared" = "I(year_cent^2)",
                   "Gas Price" = "log_gas_price",
-                  "% No Vehicle Households" = "log_perc_hshlds_noveh", 
-                  "% Workers Below Federal Poverty Line" = "log_below_fpl", 
-                  "% Commuting by Car" = "log_perc_car", 
-                  "% Commuting by Taxi" = "log_perc_taxicab", 
-                  "% Work From Home" = "log_perc_wfh", 
-                  "% Female Workers" = "log_perc_female", 
-                  "% Workers Between 100-150% of Federal Povery Level" = "log_fpl_100_150", 
-                  "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied", 
-                  "Labor Participation Rate" = "log_labor_part_rate", 
+                  "% No Vehicle Households" = "log_perc_hshlds_noveh",
+                  "% Workers Below Federal Poverty Line" = "log_below_fpl",
+                  "% Commuting by Car" = "log_perc_car",
+                  "% Commuting by Taxi" = "log_perc_taxicab",
+                  "% Work From Home" = "log_perc_wfh",
+                  "% Female Workers" = "log_perc_female",
+                  "% Workers Between 100-150% of Federal Povery Level" = "log_fpl_100_150",
+                  "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied",
+                  "Labor Participation Rate" = "log_labor_part_rate",
                   "Unemployment Rate" = "log_unemp_rate",
                   "Is Bus Rapid Transit" = "brtTRUE",
-                  "Fare" = "fare") 
-    
+                  "Fare" = "log_fare",
+                  addnl_vars())
+
     vars <- names(name_key[name_key %in% names(created_model$coefficients)])
-    
+
     new_coeff_df <-  data.frame("Variable" = vars,
                                 "Coeff" = round(created_model$coefficients, 3),
                                 "P-value" = round(fixest::pvalue(created_model), 3))
-    
+
     replaceData(proxy, new_coeff_df, resetPaging = FALSE)
   })
-  
-  
-  
+
+
+
   # # Show the coefficients that were generated from stepwise function
   # output$tbl_mod_stepwise <- render_gt({
   #   created_model <- model()
-  # 
+  #
   #   data.frame("Variable" = names(created_model$coefficients),
   #              "Coeff" = created_model$coefficients,
   #              "P-value" = fixest::pvalue(created_model)) |>
   #     gt(rowname_col = "Variable")
   # })
-  
+
   # show the coefficients that were generated from regression model function
   output$tbl_mod_forced <- renderDT({
     created_model <- model_forced()
-    
+
     name_key <- c("VRM" = "log_vrm",
                   "February" = "factor(month)2",
                   "March" = "factor(month)3",
@@ -1142,24 +1152,31 @@ server <- function(input, output, session) {
                   "Year" = "year_cent",
                   "Year Squared" = "I(year_cent^2)",
                   "Gas Price" = "log_gas_price",
-                  "% No Vehicle Households" = "log_perc_hshlds_noveh", 
-                  "% Workers Below Federal Poverty Line" = "log_below_fpl", 
-                  "% Commuting by Car" = "log_perc_car", 
-                  "% Commuting by Taxi" = "log_perc_taxicab", 
-                  "% Work From Home" = "log_perc_wfh", 
-                  "% Female Workers" = "log_perc_female", 
-                  "% Workers Between 100-150% of Federal Povery Level" = "log_fpl_100_150", 
-                  "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied", 
-                  "Labor Participation Rate" = "log_labor_part_rate", 
+                  "% No Vehicle Households" = "log_perc_hshlds_noveh",
+                  "% Workers Below Federal Poverty Line" = "log_below_fpl",
+                  "% Commuting by Car" = "log_perc_car",
+                  "% Commuting by Taxi" = "log_perc_taxicab",
+                  "% Work From Home" = "log_perc_wfh",
+                  "% Female Workers" = "log_perc_female",
+                  "% Workers Between 100-150% of Federal Povery Level" = "log_fpl_100_150",
+                  "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied",
+                  "Labor Participation Rate" = "log_labor_part_rate",
                   "Unemployment Rate" = "log_unemp_rate",
                   "Is Bus Rapid Transit" = "brtTRUE",
-                  "Fare" = "fare") 
-    
-    vars <- names(name_key[name_key %in% names(created_model$coefficients)])
-    
-    data.frame("Variable" = vars,
-               "Coeff" = round(created_model$coefficients, 3),
-               "P-value" = round(fixest::pvalue(created_model), 3))  |>
+                  "Fare" = "log_fare",
+                  addnl_vars())
+
+    var_table <- data.frame("Variable" = names(name_key),
+                            "vars" = unname(name_key))
+
+    coef_table <- data.frame("vars" = names(created_model$coefficients),
+                             "Coeff" = round(created_model$coefficients,3),
+                             "P.value" = round(fixest::pvalue(created_model), 3))
+
+
+    coef_table |>
+      left_join(var_table, by = "vars") |>
+      select("Variable", "Coeff", "P.value") |>
       datatable(selection = "none",
                 options = list(
                   dom = 't',         # Only show the Table (hides search, paging, etc.)
@@ -1169,50 +1186,51 @@ server <- function(input, output, session) {
                   rownames = FALSE
                 ))
   })
-  
+
   selected_model <- reactiveVal(NULL)
-  
+
   observeEvent(input$use_this_model_button, {
     # pick model() if it exists, otherwise fall back to first_model()
     m <- isolate(model())
     if (is.null(m)) m <- isolate(first_model())
-    
+
     req(m)                 # still require *something* exists
     selected_model(m)
-    
+
     bslib::nav_select("main_nav", "pan_5")
   })
-  
+
   observeEvent(input$use_this_model_button_forced, {
     fm <- isolate(model_forced())
     req(fm)
     selected_model(fm)
     bslib::nav_select("main_nav", "pan_5")
   })
-  
-  
+
+
   ## REVIEWING MODEL ##
   output$coefficients_review <- render_gt({
     req(!is.null(selected_model()))
-    check_coefficients(selected_model())
+    req(addnl_vars())
+    check_coefficients(selected_model(),addnl_vars())
   })
-  
-  
+
+
   # getting a vector with the final coefficients that will be used in the model
   final_coefs <- reactive({
     req(selected_model())
-    
+
     if (is.null(input$forced_coef_checkbox)){
       final_coefs <- coef(selected_model())
     } else{
       updated_coefs <- input$forced_coef_checkbox
       # updated_coefs <- c("vrm","gas","fares")
-      
+
       new_coefs <- c(vrm = .45, gas = .15, fares = -0.3, brt = -0.3)
       new_coefs <- new_coefs[names(new_coefs) %in% updated_coefs]
-      
+
       coefs_og <- coef(selected_model())
-      
+
       # map coefs_og names -> new_coef names
       map <- c(log_vrm = "vrm",
                log_gas_price = "gas",
@@ -1220,56 +1238,56 @@ server <- function(input, output, session) {
                brt = "brt")
       new_names <- map[map %in% names(new_coefs)]
       names(new_coefs) <- names(new_names)
-      
+
       # replace v2 values where mapping exists (and key exists in v1)
       idx <- names(coefs_og) %in% names(map)
       final_coefs <- c(coefs_og[idx == FALSE],new_coefs)
     }
-    
-    
+
+
     final_coefs
-    
+
   })
-  
+
   ## GETTING FORCASTING INPUTS ##
-  
+
   routes <- reactive({
     req(input$upload_data$datapath)
     ridership_df <- read_excel(input$upload_data$datapath)
-    
+
     unique(ridership_df$route_id)
   })
-  
+
   v <- reactiveValues(data = NULL)
-  
+
   # NEW: store saved scenarios (all routes)
   saved <- reactiveValues(by_route = NULL)
-  
+
   # NEW: for overwrite confirmation workflow
   pending <- reactiveValues(routes_to_save = NULL, mode = NULL)
-  
+
   # NEW: your full set of routes (replace routes() with your real source)
   all_routes <- reactive({
     req(routes())     # routes() should return a character vector of route ids/names
     routes()
   })
-  
+
   # NEW: which routes already have saved scenarios
   saved_routes <- reactive({
     if (is.null(saved$by_route)) character(0) else sort(unique(saved$by_route$Route))
   })
-  
+
   # NEW: remaining (unsaved) routes
   unsaved_routes <- reactive({
     setdiff(all_routes(), saved_routes())
   })
-  
+
   # Use an observer to get the model they choose to use
   # and create a data frame for the forecasting inputs
   observeEvent(input$proceed_to_forecast, {
     req(final_coefs())
     elasticities <- get_elasticity_varaibles(final_coefs())
-    
+
     elast_table <- data.frame("Variable" = names(elasticities),
                               "Low" = "-1%",
                               "Mid" = "2%",
@@ -1277,31 +1295,31 @@ server <- function(input, output, session) {
     elast_table <- elast_table[,2:4]
     rownames(elast_table) <- names(elasticities)
     names(elast_table) <- c("Low Estimate","Mid Estimate","High Estimate")
-    
+
     # Update the reactiveValues with the elasticities table
     v$data <- elast_table
-    
+
     bslib::nav_select("main_nav", "pan_6")
   })
-  
+
   # NEW: keep the route dropdown updated based on mode and what's already saved
   observe({
     req(input$route_mode)
-    
+
     if (input$route_mode == "new") {
       rem <- unsaved_routes()
       choices <- c("All remaining routes" = "__ALL_REMAINING__", rem)
-      
+
       updateSelectInput(
         session, "route_selected",
         choices = choices,
         selected = if (length(rem)) rem[1] else "__ALL_REMAINING__"
       )
-      
+
     } else { # overwrite mode
       existing <- saved_routes()
       choices <- c(existing, "All saved routes" = "__ALL_SAVED__")
-      
+
       updateSelectInput(
         session, "route_selected",
         choices = choices,
@@ -1309,7 +1327,7 @@ server <- function(input, output, session) {
       )
     }
   })
-  
+
   # 2. Render the table with editable = TRUE
   output$dtScenarios <- renderDT({
     req(v$data)
@@ -1321,24 +1339,24 @@ server <- function(input, output, session) {
                 searching = FALSE  # Remove the search box
               ))
   })
-  
+
   # 3. Use a proxy to update the table without a full re-render
   proxy_scenarios <- dataTableProxy('dtScenarios')
-  
+
   # 4. Observe the 'cell_edit' event
   observeEvent(input$dtScenarios_cell_edit, {
     info <- input$dtScenarios_cell_edit
-    
+
     # Extract row and column (DT uses 0-based indexing for columns)
     i <- info$row
     j <- info$col # they say i need to have +1, but I don't htink I do
     k <- info$value
-    
+
     v$data[i, j] <- DT::coerceValue(k, v$data[i, j])
-    
+
     replaceData(proxy_scenarios, v$data, resetPaging = FALSE)
   })
-  
+
   # NEW: helper that performs the save (overwrites only targeted routes)
   save_routes <- function(routes_to_save) {
     base <- data.frame(
@@ -1346,9 +1364,9 @@ server <- function(input, output, session) {
       as.data.frame(v$data, stringsAsFactors = FALSE),
       row.names = NULL
     )
-    
+
     to_save <- do.call(rbind, lapply(routes_to_save, function(rt) cbind(Route = rt, base)))
-    
+
     if (is.null(saved$by_route)) {
       saved$by_route <- to_save
     } else {
@@ -1356,24 +1374,24 @@ server <- function(input, output, session) {
       saved$by_route <- rbind(saved$by_route, to_save)
     }
   }
-  
+
   # NEW: Save button handler (with confirmation when overwriting)
   observeEvent(input$save_route_scenario, {
     req(v$data, input$route_selected, input$route_mode)
-    
+
     routes_to_save <- if (input$route_mode == "new") {
       if (identical(input$route_selected, "__ALL_REMAINING__")) unsaved_routes() else input$route_selected
     } else {
       if (identical(input$route_selected, "__ALL_SAVED__")) saved_routes() else input$route_selected
     }
-    
+
     validate(need(length(routes_to_save) > 0, "No routes selected."))
-    
+
     # Require confirmation for overwrite mode
     if (input$route_mode == "overwrite") {
       pending$routes_to_save <- routes_to_save
       pending$mode <- "overwrite"
-      
+
       showModal(modalDialog(
         title = "Confirm overwrite",
         paste0(
@@ -1389,11 +1407,11 @@ server <- function(input, output, session) {
       ))
       return()
     }
-    
+
     # New routes mode: save immediately
     save_routes(routes_to_save)
   })
-  
+
   # NEW: confirm overwrite
   observeEvent(input$confirm_overwrite, {
     removeModal()
@@ -1402,31 +1420,31 @@ server <- function(input, output, session) {
     pending$routes_to_save <- NULL
     pending$mode <- NULL
   })
-  
+
   # Optional: view saved scenarios
   output$dtSavedScenarios <- renderDT({
     req(saved$by_route)
     datatable(saved$by_route, options = list(pageLength = 25))
   })
-  
-  
-  
+
+
+
   ## RUNNING FORECASTS ##
-  
+
   forecast_df <- eventReactive(input$buttonRun, {
-    
+
     req(final_coefs())
     req(acs_data())
     req(!is.null(v$data))
     req(saved$by_route)
-    
+
     saved_predictions <- saved$by_route
-    
+
     routes <- routes()
-    
+
     coefs <- final_coefs()
     acs <- acs_data()
-    
+
     grouped_routes <- saved_predictions |>
       group_by(Route) |>
       summarize(low = paste(Low.Estimate, collapse = ", "),
@@ -1437,22 +1455,22 @@ server <- function(input, output, session) {
       mutate(route_group_id = cur_group_id()) |>
       ungroup() |>
       select(Route, route_group_id)
-    
+
     grouped_predictions <- saved_predictions |>
       left_join(grouped_routes, by = join_by(Route))
-    
-    
+
+
     if (length(unique(saved_predictions$Route)) == length(routes)){
       forecast_dfs <- list()
       for (group_id in unique(grouped_predictions$route_group_id)){
         filtered_grouped_predictions <- grouped_predictions |>
           filter(route_group_id == group_id)
-        
+
         one_route_in_group <- filtered_grouped_predictions$Route[[1]]
-        
+
         scenario_df <- grouped_predictions |>
           filter(Route == one_route_in_group)
-        
+
         df_unfiltered <- forecast_ridership(coefs = coefs,
                                  data_xlsx = input$upload_data$datapath,
                                  acs_data = acs,
@@ -1460,55 +1478,55 @@ server <- function(input, output, session) {
                                  scenario_inputs_df = scenario_df,
                                  start_year = NULL,
                                  start_month = NULL)
-        
-        
+
+
         df <- df_unfiltered |>
           filter(route_id %in% unique(filtered_grouped_predictions$Route))
-        
+
         forecast_dfs[[as.character(group_id)]] <- df
       }
-      
+
       observeEvent(input$buttonRun, {
         bslib::nav_select("main_nav", "pan_7")
       })
-      
+
       final_df <- bind_rows(forecast_dfs)
-      
+
       df_all_routes <- final_df |>
         summarize(route_id = "all_routes",
                   avg_daily_upt = sum(avg_daily_upt, na.rm = T),
                   tot_weekday_upt = sum(tot_weekday_upt, na.rm = T),
                   .by = c(year, month, scenario)) |>
         mutate(date = ym(paste(year, month,sep = "/")))
-      
+
       final_df <- bind_rows(final_df, df_all_routes)
-      
-      
+
+
     } else{
       final_df <- NULL
     }
-    
+
     final_df
-    
+
   })
-  
-  
+
+
   ## TEST PLOT TO WORK WITH FORECASTS ##
-  
+
   forcast_preview <- eventReactive(input$buttonRun, {
     req(forecast_df())
     plot_forecast(forecast_df())
   })
-  
-  
+
+
   # output$forcast_plot <- renderPlot({
   #   req(forecast_df())
   #   forcast_preview()
   # })
-  
-  
+
+
   #### VISUALIZATION PAGE ####
-  
+
   observeEvent(input$buttonRun, {
     req(forecast_df())
     df <- forecast_df()
@@ -1518,35 +1536,35 @@ server <- function(input, output, session) {
       selected = unique(df$route_id)[1]
     )
   }, ignoreInit = TRUE)
-  
-  
+
+
   output$viz_plot <- renderPlot({
     req(forecast_df())
     req(forcast_preview())
     df <- forecast_df()
     plot_forecast(df, route = input$input_route_to_plot)
   })
-  
+
   # output$viz_plot_2 <- renderPlot({
   #   req(forecast_df())
   #   req(forcast_preview())
   #   df <- forecast_df()
   #   plot_forecast_facet(df)
   # })
-  
+
   #### FINAL DOWNLOAD PAGE ####
-  
+
   output_df <- reactive({
     forecast_df() |>
       select(route_id, year, month, avg_daily_upt, tot_weekday_upt, forecast, scenario)
   })
-  
+
   # Show a preview of the output that is about to be downloaded
   output$outputExample <- renderDT({
     req(forecast_df())
     output_df()
   })
-  
+
   # Handle the csv download
   output$download_csv <- downloadHandler(
     filename = function() {
@@ -1556,7 +1574,7 @@ server <- function(input, output, session) {
       write.csv(output_df(), file, row.names = FALSE)
     }
   )
-  
+
   # Handle the xlsx download
   output$download_xlsx <- downloadHandler(
     filename = function() {
@@ -1566,9 +1584,9 @@ server <- function(input, output, session) {
       write_xlsx(output_df(), file)
     }
   )
-  
+
 }
 
 shinyApp(ui, server)
-  
+
 

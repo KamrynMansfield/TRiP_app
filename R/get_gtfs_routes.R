@@ -9,21 +9,21 @@
 get_gtfs_routes <- function(gtfs_zip_file){
   # read in gtfs
   gtfs <- read_gtfs(gtfs_zip_file)
-  
+
   # get route and shape id combinations
-  route_list <- gtfs$trips %>% 
-    select(route_id, shape_id) %>% 
+  route_list <- gtfs$trips %>%
+    select(route_id, shape_id) %>%
     distinct()
-  
+
   # convert gtfs to sf lines with route id
-  shapes_routes <- shapes_as_sf(gtfs$shapes) %>% 
+  shapes_routes <- shapes_as_sf(gtfs$shapes) %>%
     left_join(route_list, by = "shape_id")
-  
+
   # group shapes by route id and combine shapes
-  comb_shapes_routes <- shapes_routes %>% 
-    group_by(route_id) %>% 
+  comb_shapes_routes <- shapes_routes %>%
+    group_by(route_id) %>%
     summarise(do_union = TRUE)
-  
+
   return(comb_shapes_routes)
 }
 
