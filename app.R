@@ -161,6 +161,7 @@ ui <- page_navbar(
           hr(),
           h5("Input Data Example"),
           "The uploaded data must be an excel file formatted in this way",
+          "Note that route_id must match the route id in the GTFS files",
           tableOutput(outputId = "example_input"),
           hr(),
           "Just a few more questions before creating your model for forecasting.",
@@ -628,8 +629,12 @@ server <- function(input, output, session) {
 
     extra_variables <- names(df)[!names(df) %in% c("route_id","month","year","upt","vrm")]
 
-    addnl_vars <- paste0("log_",extra_variables)
-    names(addnl_vars) <- extra_variables
+    if (length(extra_variables) > 0){
+      addnl_vars <- paste0("log_",extra_variables)
+      names(addnl_vars) <- extra_variables
+    } else{
+      addnl_vars <- NULL
+    }
 
     addnl_vars
   })
@@ -913,10 +918,9 @@ server <- function(input, output, session) {
   first_model <- reactive({ # first model
     req(input$upload_data$datapath)
     req(acs_data())
-    req(addnl_vars())
     acs <- acs_data()
     # acs <- acs_data
-    # xl_data <- "../data/MARTA Data/marta_input_data_all.xlsx"
+    # xl_data <- "../data/MARTA Data/marta_input_2013-2021.xlsx"
     vars <- c("[VRM]" = "log_vrm",
                   "[Month]" = "factor(month)",
                   "[Year]" = "year_cent",
@@ -1211,7 +1215,6 @@ server <- function(input, output, session) {
   ## REVIEWING MODEL ##
   output$coefficients_review <- render_gt({
     req(!is.null(selected_model()))
-    req(addnl_vars())
     check_coefficients(selected_model(),addnl_vars())
   })
 
@@ -1286,7 +1289,7 @@ server <- function(input, output, session) {
   # and create a data frame for the forecasting inputs
   observeEvent(input$proceed_to_forecast, {
     req(final_coefs())
-    elasticities <- get_elasticity_varaibles(final_coefs())
+    elasticities <- get_elasticity_varaibles(final_coefs(), addnl_vars())
 
     elast_table <- data.frame("Variable" = names(elasticities),
                               "Low" = "-1%",
