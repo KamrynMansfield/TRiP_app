@@ -22,6 +22,8 @@
 #               addnl_vars)
 # fare_df <- NULL
 # brt_df <- NULL
+# fare_df <- fare_tbl
+# brt_df <- brt_tbl
 #
 # df_all_log[,12:14]
 

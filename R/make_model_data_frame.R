@@ -8,7 +8,7 @@ make_model_data_frame <- function(data_xlsx,
                                   fare_df = NULL,
                                   brt_df = NULL){
   # load in upt and vrm data
-  data <- read_excel(data_xlsx, na = "NA")
+  data <- data_xlsx
 
   min_year <- min(data$year)
 

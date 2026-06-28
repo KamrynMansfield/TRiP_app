@@ -12,6 +12,7 @@ ui <- page_navbar(
   selected = "pan_1",
   collapsible = TRUE,
   theme = bslib::bs_theme(),
+##### 1. screening #####
   nav_panel(
     value = "pan_1",
     title = "1. Screening",
@@ -87,6 +88,7 @@ ui <- page_navbar(
       )
     )
   ),
+##### 2. rider data #####
   nav_panel(
     value = "pan_2",
     title = "2. Ridership Data Upload",
@@ -140,7 +142,8 @@ ui <- page_navbar(
                 style = "display:flex; gap:.5rem; flex-wrap:wrap;",
                 actionButton("add_brt", "Submit BRT change", class = "btn-primary"),
                 actionButton("delete_brt", "Delete selected BRT row", class = "btn-danger")
-              )
+              ),
+              uiOutput(outputId = "existing_brt_routes") #TODO: This is where I'm at
             )
           ),
           conditionalPanel(
@@ -183,6 +186,7 @@ ui <- page_navbar(
       )
     )
   ),
+##### 3. gtfs #####
   nav_panel(
     value = "pan_3",
     title = "3. GTFS Upload",
@@ -216,6 +220,7 @@ ui <- page_navbar(
       )
     )
   ),
+##### 4. Create Model #####
   nav_panel(
     value = "pan_4",
     title = "4. Model Creation",
@@ -280,6 +285,7 @@ ui <- page_navbar(
       )
     )
   ),
+##### 5. Review Model #####
   nav_panel(
     value = "pan_5",
     title = "5. Model Review",
@@ -330,6 +336,7 @@ ui <- page_navbar(
       )
     )
   ),
+##### 6. Forecasting #####
   nav_panel(
     value = "pan_6",
     title = "6. Forecasting Inputs",
@@ -379,6 +386,7 @@ ui <- page_navbar(
       )
     )
   ),
+##### 7. Visualize #####
   nav_panel(
     value = "pan_7",
     title = "7. Visualization",
@@ -412,6 +420,7 @@ ui <- page_navbar(
     )
   )
   ),
+##### 8. Export #####
   nav_panel(
     value = "pan_8",
     title = "8. Export",
@@ -451,6 +460,7 @@ ui <- page_navbar(
 #### SERVER ####
 server <- function(input, output, session) {
 
+#### 1. SCREENING ####
   output$textWarn1 <- renderText({
     if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
       paste("This app might be useful to your agency :)")
@@ -475,119 +485,105 @@ server <- function(input, output, session) {
     }
   })
 
-  #### PLOTTING GTFS ROUTES ####
+#### 2. RIDERSHIP DATA UPLOAD ####
 
-  # getting routes sf from gtfs
-  route_sf <- reactive({
-    req(input$upload_routes) # Ensure a file is uploaded
-    routes <- input$upload_routes$datapath
-    get_gtfs_routes(routes)
+  # Read and modify the uploaded data
+  processed_data <- reactive({
+    req(input$upload_data) # Ensure a file is uploaded
+    df <- read_excel(input$upload_data$datapath)
+
+    return(df)
   })
 
-  # getting the counties it touches
-  county_sf <- reactive({
-    find_overlapping_counties(route_sf())
+  # checking to make sure the data is formatted correctly
+  check_names <- reactive({
+    req(processed_data())
+    df <- processed_data()
+
+    needed_cols <- c("route_id", "month", "year", "upt", "vrm")
+    # must_contain route_id, month,  year,   upt, and vrm columns
+    check_names_long <- needed_cols %in% names(df)
+
+    sum(check_names_long) == 5
+
   })
 
-  # once someone uploads the gtfs,
-  observeEvent(input$upload_routes, {
+  check_numeric <- reactive({
+    req(processed_data())
+    df <- processed_data()
 
-    output$route_map <- renderLeaflet({
-      make_route_leaflet(route_sf(),county_sf())
-    })
-
-    output$acs_description <- renderText({
-      "Your transit routes and the counties they cross are displayed to the right. If these are the routes and counties you expected, you are ready for the next step. Click the button below to pull the census data that will be used in the model."
-    })
-
-    # Once finished, render the button to pull acs data
-    output$acs_button_placeholder <- renderUI({
-      input_task_button("get_acs", "Get Census Data")
-    })
-  })
-
-  # display a message stating that the plot is rendering
-  observe({
-    showNotification(
-      paste("Plotting routes. Please wait a moment."),
-      type = "message",
-      duration = 20
-    )
-  }) |>
-    bindEvent(input$upload_routes)
-
-
-  #### GET AND PREPARE CENSUS DATA ####
-
-  acs_data <- reactiveVal(NULL)
-
-  observeEvent(input$get_acs, {
-    req(input$upload_data$datapath)
-
-    vrm_data <- read_excel(input$upload_data$datapath)
-
-    year_start <- min(vrm_data$year, na.rm = T)
-    month_start <- vrm_data |>
-      dplyr::filter(year == year_start) |>
-      dplyr::pull(month) |>
-      min(na.rm = TRUE)
-    month_start <- paste0(year_start, "-", month_start)
-
-
-    year_end <- max(vrm_data$year, na.rm = T)
-    month_end <- vrm_data |>
-      dplyr::filter(year == year_end) |>
-      dplyr::pull(month) |>
-      max(na.rm = TRUE)
-    month_end <- paste0(year_end, "-", month_end)
-
-    # This prevents it from looking for ACS data above 2024.
-    # TODO: It sill need to be updated to 2025 when the ACS 2025 data is available
-    if(year_end > 2024){
-      year_end_val <- 2024
-    } else {
-      year_end_val <- year_end
+    # all columns except rout_id must be able to be numeric
+    numeric_cols <- names(df)[names(df) != c("route_id")]
+    for (col in numeric_cols){
+      df[,col] <- tryCatch(
+        {
+          as.numeric(unlist(df[,col]))
+        },
+        warning = function(w) {
+          return("warning")
+        },
+        error = function(e) {
+          return("error")
+        }
+      )
     }
 
-    res <- withProgress(message = "Organizing Census Data...",
-                        detail = "this could take a minute or two", value = 0, {
+    check_numeric_long <- sapply(df, is.numeric)
 
-                          incProgress(0.05, detail = "Starting process")
-                          route_geom  <- route_sf()
-                          county_info <- county_sf()
-
-                          state_fps  <- unique(county_info$STATEFP)
-                          county_fps <- unique(county_info$COUNTYFP)
-                          year_vals  <- (year_start-1):year_end_val
-
-                          incProgress(0.20, detail = "Pulling in census tracts")
-                          census_tract_geom <- get_tract_geometry(state_fps, county_fps, year_vals)
-
-                          incProgress(0.15, detail = "Finding tracts that intersect bus routes")
-                          tract_buffer_data <- create_intersecting_tract_percentages(
-                            census_tract_geom, route_geom
-                          )
-
-                          incProgress(0.30, detail = "Pulling ACS data")
-                          pulled_acs <- pull_acs_data(county_sf = county_info, years = year_vals)
-
-                          incProgress(0.05, detail = "Organizing ACS data")
-                          organized_acs <- combine_acs_data(pulled_acs)
-
-                          incProgress(0.20, detail = "Preparing data for model")
-                          create_final_acs_data(
-                            combined_acs_data   = organized_acs,
-                            intersecting_tracts = tract_buffer_data,
-                            start_month         = month_start,
-                            end_month           = month_end
-                          )
-                        })
-
-    acs_data(res)  # store result so outputs can use it
-
-    bslib::nav_select("main_nav", "pan_4")
+    sum(check_numeric_long[-1]) == length(check_numeric_long[-1])
   })
 
+  data_check <- reactive({
+    req(check_names())
+    req(check_numeric())
+
+    check_names() == TRUE & check_numeric() == TRUE
+  })
+
+
+  # send a message if the data is not formatted correctly
+  observe({
+    req(processed_data())
+
+    check_names <- check_names()
+    check_numeric <- check_numeric()
+
+    if (check_names == FALSE & check_numeric == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm). Additionally, you have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric."
+        )
+      )
+    } else if(check_names == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm)."
+        )
+      )
+    } else if(check_numeric == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "You have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric."
+        )
+      )
+    } else if(check_numeric & check_names) {
+      # maybe I should put another notification saying the file looks good
+      showNotification("File Received and Processed",
+                       type = "message")
+    } else{
+      showNotification("ERROR: There was an unknown error with your file. Please double check to make sure it follows the correct formatting",
+                       type = "error",
+                       duration = 15)
+    }
+
+  }) |>
+    bindEvent(processed_data())
 
   output$example_input <- renderTable({
     upt <- read_excel("data/data_example.xlsx") |>
@@ -613,16 +609,6 @@ server <- function(input, output, session) {
   })
 
 
-
-
-  # Read and modify the uploaded data
-  processed_data <- reactive({
-    req(input$upload_data) # Ensure a file is uploaded
-    df <- read_excel(input$upload_data$datapath)
-
-    return(df)
-  })
-
   addnl_vars <- reactive({
     req(processed_data())
     df <- processed_data()
@@ -640,7 +626,7 @@ server <- function(input, output, session) {
   })
 
 
-  #### Copied AI code for fare change table ####
+  ##### Copied AI code for fare change table #####
 
 
   # Current agency working table (no agency column yet; add on save)
@@ -733,7 +719,7 @@ server <- function(input, output, session) {
     }
   })
 
-#### BRT CHNAGES CODE ####
+  ##### BRT CHNAGES CODE #####
 
 
   # add inputs for a brt change
@@ -752,10 +738,6 @@ server <- function(input, output, session) {
           width = "150px")
       })
 
-      # when I need to find the month and year I will do something like this
-      # year(input$brt_change_date)
-      # month(input$brt_change_date)
-
       input_df <- processed_data()
       routes <- input_df$route_id
 
@@ -769,6 +751,16 @@ server <- function(input, output, session) {
         selectizeInput(
           "select_brt_routes",
           "Routes converted to BRT",
+          route_list,
+          multiple = TRUE,
+          width = "200px"
+        )
+      })
+
+      output$existing_brt_routes <- renderUI({
+        selectizeInput(
+          "select_exist_brt_routes",
+          "Select any routes that were already BRT",
           route_list,
           multiple = TRUE,
           width = "200px"
@@ -914,13 +906,166 @@ server <- function(input, output, session) {
   })
 
 
+  # fare_tbl <- data.frame(change_date = "2024-06-20",
+  #                        prev_fare = 2,
+  #                        new_fare = 2.5)
+  #
+  # brt_tbl <- data.frame(change_date_brt = "2023-04-14",
+  #                       routes_brt = "14")
+
+
+#### 3. GTFS UPLOAD ####
+
+  # getting routes sf from gtfs
+  route_sf <- reactive({
+    req(input$upload_routes) # Ensure a file is uploaded
+    routes <- input$upload_routes$datapath
+
+    tryCatch(
+      {
+        get_gtfs_routes(routes)
+      },
+      error = function(e) {
+        return("error")
+      }
+    )
+
+  })
+
+  # Check to make sure it is a proper gtfs route
+  #TODO
+
+  # getting the counties it touches
+  county_sf <- reactive({
+    req(!inherits(route_sf(), "character"))
+    find_overlapping_counties(route_sf())
+  })
+
+  # once someone uploads the gtfs,
+  observeEvent(input$upload_routes, {
+
+    req(!inherits(route_sf(), "character"))
+
+    output$route_map <- renderLeaflet({
+      make_route_leaflet(route_sf(),county_sf())
+    })
+
+    output$acs_description <- renderText({
+      "Your transit routes and the counties they cross are displayed to the right. If these are the routes and counties you expected, you are ready for the next step. Click the button below to pull the census data that will be used in the model."
+    })
+
+    # Once finished, render the button to pull acs data
+    output$acs_button_placeholder <- renderUI({
+      input_task_button("get_acs", "Get Census Data")
+    })
+  })
+
+  # display a message stating that the plot is rendering
+  observe({
+    req(route_sf())
+
+    if (inherits(route_sf(), "character")){
+
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "Unable to process file. Make sure it is a valid GTFS formatted file."
+        )
+      )
+
+    } else{
+      showNotification(
+      paste("Plotting routes. Please wait a moment."),
+      type = "message",
+      duration = 20
+    )
+    }
+
+  }) |>
+    bindEvent(input$upload_routes)
+
+
+  ##### GET AND PREPARE CENSUS DATA #####
+
+  acs_data <- reactiveVal(NULL)
+
+  observeEvent(input$get_acs, {
+    req(data_check() == TRUE)
+
+    vrm_data <- processed_data()
+
+    year_start <- min(vrm_data$year, na.rm = T)
+    month_start <- vrm_data |>
+      dplyr::filter(year == year_start) |>
+      dplyr::pull(month) |>
+      min(na.rm = TRUE)
+    month_start <- paste0(year_start, "-", month_start)
+
+
+    year_end <- max(vrm_data$year, na.rm = T)
+    month_end <- vrm_data |>
+      dplyr::filter(year == year_end) |>
+      dplyr::pull(month) |>
+      max(na.rm = TRUE)
+    month_end <- paste0(year_end, "-", month_end)
+
+    # This prevents it from looking for ACS data above 2024.
+    # TODO: It sill need to be updated to 2025 when the ACS 2025 data is available
+    if(year_end > 2024){
+      year_end_val <- 2024
+    } else {
+      year_end_val <- year_end
+    }
+
+    res <- withProgress(message = "Organizing Census Data...",
+                        detail = "this could take a minute or two", value = 0, {
+
+                          incProgress(0.05, detail = "Starting process")
+                          route_geom  <- route_sf()
+                          county_info <- county_sf()
+
+                          state_fps  <- unique(county_info$STATEFP)
+                          county_fps <- unique(county_info$COUNTYFP)
+                          year_vals  <- (year_start-1):year_end_val
+
+                          incProgress(0.20, detail = "Pulling in census tracts")
+                          census_tract_geom <- get_tract_geometry(state_fps, county_fps, year_vals)
+
+                          incProgress(0.15, detail = "Finding tracts that intersect bus routes")
+                          tract_buffer_data <- create_intersecting_tract_percentages(
+                            census_tract_geom, route_geom
+                          )
+
+                          incProgress(0.30, detail = "Pulling ACS data")
+                          pulled_acs <- pull_acs_data(county_sf = county_info, years = year_vals)
+
+                          incProgress(0.05, detail = "Organizing ACS data")
+                          organized_acs <- combine_acs_data(pulled_acs)
+
+                          incProgress(0.20, detail = "Preparing data for model")
+                          create_final_acs_data(
+                            combined_acs_data   = organized_acs,
+                            intersecting_tracts = tract_buffer_data,
+                            start_month         = month_start,
+                            end_month           = month_end
+                          )
+                        })
+
+    acs_data(res)  # store result so outputs can use it
+
+    bslib::nav_select("main_nav", "pan_4")
+  })
+
+
+#### 4. MODEL CREATION ####
   # get first model after user inputs the files
   first_model <- reactive({ # first model
     req(input$upload_data$datapath)
     req(acs_data())
     acs <- acs_data()
     # acs <- acs_data
-    # xl_data <- "../data/MARTA Data/marta_input_2013-2021.xlsx"
+    xl_data <- processed_data()
     vars <- c("[VRM]" = "log_vrm",
                   "[Month]" = "factor(month)",
                   "[Year]" = "year_cent",
@@ -941,7 +1086,7 @@ server <- function(input, output, session) {
              addnl_vars())
 
 
-    create_regression_model(data_xlsx = input$upload_data$datapath,
+    create_regression_model(data_xlsx = xl_data,
                             acs_data = acs,
                             gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                             variables = vars,
@@ -1059,7 +1204,7 @@ server <- function(input, output, session) {
     {
       req(input$upload_data$datapath)
       req(acs_data())
-      create_regression_model(data_xlsx = input$upload_data$datapath,
+      create_regression_model(data_xlsx = processed_data(),
                               acs_data = acs_data(),
                               gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                               variables = input$variables,
@@ -1074,7 +1219,7 @@ server <- function(input, output, session) {
     {
       req(input$upload_data$datapath)
       req(acs_data())
-      create_regression_model_forced(data_xlsx = input$upload_data$datapath,
+      create_regression_model_forced(data_xlsx = processed_data(),
                               acs_data = acs_data(),
                               gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                               variables = input$variables_forced,
@@ -1124,18 +1269,6 @@ server <- function(input, output, session) {
 
     replaceData(proxy, new_coeff_df, resetPaging = FALSE)
   })
-
-
-
-  # # Show the coefficients that were generated from stepwise function
-  # output$tbl_mod_stepwise <- render_gt({
-  #   created_model <- model()
-  #
-  #   data.frame("Variable" = names(created_model$coefficients),
-  #              "Coeff" = created_model$coefficients,
-  #              "P-value" = fixest::pvalue(created_model)) |>
-  #     gt(rowname_col = "Variable")
-  # })
 
   # show the coefficients that were generated from regression model function
   output$tbl_mod_forced <- renderDT({
@@ -1194,11 +1327,13 @@ server <- function(input, output, session) {
   selected_model <- reactiveVal(NULL)
 
   observeEvent(input$use_this_model_button, {
+    req(first_model())
     # pick model() if it exists, otherwise fall back to first_model()
     m <- isolate(model())
-    if (is.null(m)) m <- isolate(first_model())
+    if (is.null(m)){
+      m <- isolate(first_model())
+    }
 
-    req(m)                 # still require *something* exists
     selected_model(m)
 
     bslib::nav_select("main_nav", "pan_5")
@@ -1212,7 +1347,7 @@ server <- function(input, output, session) {
   })
 
 
-  ## REVIEWING MODEL ##
+#### 5. REVIEW MODEL ####
   output$coefficients_review <- render_gt({
     req(!is.null(selected_model()))
     check_coefficients(selected_model(),addnl_vars())
@@ -1252,11 +1387,11 @@ server <- function(input, output, session) {
 
   })
 
-  ## GETTING FORCASTING INPUTS ##
+#### 6 FORECAST AND VIZUALIZATION ####
 
   routes <- reactive({
     req(input$upload_data$datapath)
-    ridership_df <- read_excel(input$upload_data$datapath)
+    ridership_df <- processed_data()
 
     unique(ridership_df$route_id)
   })
@@ -1359,6 +1494,8 @@ server <- function(input, output, session) {
 
     replaceData(proxy_scenarios, v$data, resetPaging = FALSE)
   })
+
+
 
   # NEW: helper that performs the save (overwrites only targeted routes)
   save_routes <- function(routes_to_save) {
@@ -1475,7 +1612,7 @@ server <- function(input, output, session) {
           filter(Route == one_route_in_group)
 
         df_unfiltered <- forecast_ridership(coefs = coefs,
-                                 data_xlsx = input$upload_data$datapath,
+                                 data_xlsx = processed_data(),
                                  acs_data = acs,
                                  gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                                  scenario_inputs_df = scenario_df,
@@ -1528,7 +1665,7 @@ server <- function(input, output, session) {
   # })
 
 
-  #### VISUALIZATION PAGE ####
+#### 7. VISUALIZATION PAGE ####
 
   observeEvent(input$buttonRun, {
     req(forecast_df())
@@ -1555,7 +1692,7 @@ server <- function(input, output, session) {
   #   plot_forecast_facet(df)
   # })
 
-  #### FINAL DOWNLOAD PAGE ####
+#### 8. FINAL DOWNLOAD PAGE ####
 
   output_df <- reactive({
     forecast_df() |>
