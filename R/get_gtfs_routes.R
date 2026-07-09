@@ -29,3 +29,7 @@ get_gtfs_routes <- function(gtfs_zip_file){
 
 # route_geom <- get_gtfs_routes("../data/Nashville/GTFS/2024-12-16.zip")
 
+# gtfs_zip_file <- "../data/MARTA Data/marta_gtfs_12-14-2021.zip"
+#
+# route_geom <- comb_shapes_routes |>
+#   filter(route_id %in% bus_routes)

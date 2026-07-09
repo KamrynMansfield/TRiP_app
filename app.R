@@ -130,40 +130,21 @@ ui <- page_navbar(
           conditionalPanel(
             condition = "input.has_fare_changes === 'yes'",
             DTOutput("tbl")
-          ),
-          conditionalPanel(
-            condition = "input.brt_question === 'yes'",
-            h5("Inputing BRT Changes"),
-            div(
-              style = "display:flex; gap:.5rem; flex-wrap:wrap;",
-              uiOutput(outputId = "brt_date"),
-              uiOutput(outputId = "brt_routes"),
-              div(
-                style = "display:flex; gap:.5rem; flex-wrap:wrap;",
-                actionButton("add_brt", "Submit BRT change", class = "btn-primary"),
-                actionButton("delete_brt", "Delete selected BRT row", class = "btn-danger")
-              ),
-              uiOutput(outputId = "existing_brt_routes") #TODO: This is where I'm at
-            )
-          ),
-          conditionalPanel(
-            condition = "input.brt_question === 'yes'",
-            DTOutput("tbl_brt")
           )
         )
       ),
       grid_card(
         area = "area1",
         card_body(
-          "Upload an excel file with monthly Unlinked Passenger Trips (UPT) and Vehicle Revenue Miles (VRM) for each route.",
-          "(must follow format seen in example below)",
+          "Upload a properly formatted excel file with monthly Unlinked Passenger Trips (UPT) and Vehicle Revenue Miles (VRM) for each route.",
+          "(seen example below for data format) \n",
           "Due to unusual ridership patterns during the COVID19 pandemic, it is recommended that your data not go back past the year 2023.",
           fileInput("upload_data", "",
                     accept = ".xlsx",
                     width = "100%"),
           hr(),
           h5("Input Data Example"),
-          "The uploaded data must be an excel file formatted in this way",
+          "The uploaded data must be an excel file formatted in this way. \n",
           "Note that route_id must match the route id in the GTFS files",
           tableOutput(outputId = "example_input"),
           hr(),
@@ -172,13 +153,6 @@ ui <- page_navbar(
             inputId = "has_fare_changes",
             label = "Have you changed your adult base fare in the past 5 years?",
             choices = c("No" = "no", "Yes" = "yes"),
-            selected = "no",
-            inline = TRUE
-          ),
-          radioButtons(
-            inputId = "brt_question",
-            label = "Have any of your local bus routes become BRT?",
-            choices = list("No" = "no","Yes" = "yes"),
             selected = "no",
             inline = TRUE
           )
@@ -322,13 +296,34 @@ ui <- page_navbar(
               "VRM (0.45)" = "vrm",
               "Gas Price (0.15)" = "gas",
               "Fares (-0.3) ** only add if you plan to increase fares" = "fares",
-              "BRT (-0.3) ** only add if you plan to convert a route to BRT" = "brt"
+              "BRT (-0.3) ** only add if you have current BRT routes or if you plan to convert a route to BRT" = "brt"
             )
+          ),
+          uiOutput(outputId = "brt_question_placeholder"),
+          conditionalPanel(
+            condition = "input.brt_question === 'yes'",
+            h5("Inputing BRT Changes"),
+            "Please select the route and the approximamte date that it will be converted to BRT",
+            div(
+              style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+              uiOutput(outputId = "brt_date"),
+              uiOutput(outputId = "brt_routes"),
+              div(
+                style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+                actionButton("add_brt", "Submit BRT change", class = "btn-primary"),
+                actionButton("delete_brt", "Delete selected BRT row", class = "btn-danger")
+              )
+            )
+          ),
+          conditionalPanel(
+            condition = "input.brt_question === 'yes'",
+            DTOutput("tbl_brt")
           ),
           "If you have reviewed the coefficients, added any forced coefficients you wanted, and decided this is the model you want to use, please click the button below.",
           actionButton(
             inputId = "proceed_to_forecast",
-            label = "Proceed to Forecasting"
+            label = "Proceed to Forecasting",
+            class = "btn-primary"
           )
         ),
         card_body(),
@@ -541,6 +536,7 @@ server <- function(input, output, session) {
   })
 
 
+  # TODO: This doesn't seem to be working properly.
   # send a message if the data is not formatted correctly
   observe({
     req(processed_data())
@@ -719,177 +715,6 @@ server <- function(input, output, session) {
     }
   })
 
-  ##### BRT CHNAGES CODE #####
-
-
-  # add inputs for a brt change
-  observeEvent(input$brt_question, {
-
-    if (input$brt_question == "yes"){
-
-      # render the date input
-      output$brt_date <- renderUI({
-        dateInput(
-          inputId = "brt_change_date",
-          label = "Date of change",
-          value = Sys.Date(),
-          min = Sys.Date() - 10000,
-          max = Sys.Date(),
-          width = "150px")
-      })
-
-      input_df <- processed_data()
-      routes <- input_df$route_id
-
-      if (!is.null(routes)){
-        route_list <- as.list(routes)
-      } else{
-        route_list <- list("no","routes","found")
-      }
-
-      output$brt_routes <- renderUI({
-        selectizeInput(
-          "select_brt_routes",
-          "Routes converted to BRT",
-          route_list,
-          multiple = TRUE,
-          width = "200px"
-        )
-      })
-
-      output$existing_brt_routes <- renderUI({
-        selectizeInput(
-          "select_exist_brt_routes",
-          "Select any routes that were already BRT",
-          route_list,
-          multiple = TRUE,
-          width = "200px"
-        )
-      })
-
-    } else{
-      # render the date input
-      output$brt_date <- renderUI({
-        ""
-      })
-
-      output$brt_routes <- renderUI({
-        ""
-      })
-
-
-
-    }
-
-  })
-
-
-  ### COPIED AI RESPONSE FOR BRT STUFF ###
-
-  # Current agency working table
-  current_brt <- reactiveVal(
-    data.frame(
-      change_date_brt = as.Date(character()),
-      routes_brt = character(),
-      stringsAsFactors = FALSE
-    )
-  )
-
-  observeEvent(input$add_brt, {
-    req(input$brt_change_date)
-    req(!is.na(input$select_brt_routes))
-
-    df <- current_brt()
-    df <- rbind(df, data.frame(
-      change_date_brt = as.Date(input$brt_change_date),
-      routes_brt   = paste(as.character(input$select_brt_routes), collapse = ","),
-      stringsAsFactors = FALSE
-    ))
-
-    # Optional: keep sorted by date
-    df <- df[order(df$change_date_brt), ]
-
-    current_brt(df)
-  })
-
-  # Render current_brt table (editable)
-  output$tbl_brt <- renderDT({
-    datatable(
-      current_brt(),
-      rownames = FALSE,
-      selection = "multiple",
-      editable = list(target = "cell", disable = list(columns = NULL)),
-      options = list(dom = "t", paging = FALSE)
-    )  |>
-      formatStyle('change_date_brt', backgroundColor = 'lightgrey') |>
-      formatStyle('routes_brt', backgroundColor = 'lightgrey')
-  })
-
-  # Apply cell edits from DT to current_brt()
-  observeEvent(input$tbl_brt_cell_edit, {
-    info <- input$tbl_brt_cell_edit
-    df <- current_brt()
-
-    i <- info$row
-    j <- info$col + 1
-    v <- info$value
-
-    colname <- names(df)[j]
-
-    if (colname == "change_date_brt") {
-      # Expect yyyy-mm-dd; coerce to Date
-      v2 <- as.Date(v)
-      if (is.na(v2)) return()  # ignore invalid edits
-      df[i, j] <- v2
-    }
-
-    # Optional: re-sort after editing date
-    df <- df[order(df$change_date_brt), ]
-
-    current_brt(df)
-  })
-
-  # Delete selected rows
-  observeEvent(input$delete_brt, {
-    sel <- input$tbl_brt_rows_selected
-    if (length(sel) == 0) return()
-    df <- current_brt()
-    df <- df[-sel, , drop = FALSE]
-    current_brt(df)
-  })
-
-  observeEvent(input$brt_question, {
-    if (input$brt_question == "no") {
-      # clear your current_brt fare-change table
-      current_brt(current_brt()[0, , drop = FALSE])
-      # optionally reset the add-row inputs too
-      updateDateInput(session, "brt_change_date", value = Sys.Date())
-    }
-  })
-
-
-
-  brt_tbl <- reactive({
-    req(current_brt())
-
-    brt_df <- current_brt()
-
-    if (nrow(brt_df) == 0){
-      updated_brt_df <- NULL
-    } else {
-      df_list <- list()
-      for (row_num in 1:nrow(brt_df)){
-        new_df <- data.frame(change_date_brt = brt_df$change_date_brt[[row_num]], routes_brt = unlist(strsplit(brt_df$routes_brt[[row_num]],",")))
-        df_list[[row_num]] <- new_df
-      }
-
-      updated_brt_df <- bind_rows(df_list)
-    }
-
-    updated_brt_df
-
-  })
-
   fare_tbl <- reactive({
     req(current())
 
@@ -932,8 +757,6 @@ server <- function(input, output, session) {
 
   })
 
-  # Check to make sure it is a proper gtfs route
-  #TODO
 
   # getting the counties it touches
   county_sf <- reactive({
@@ -990,7 +813,9 @@ server <- function(input, output, session) {
 
   acs_data <- reactiveVal(NULL)
 
-  observeEvent(input$get_acs, {
+
+
+  observeEvent(input$get_acs, {  #TODO: If they haven't input ridership data, this won't run, but in that case I need to put a popup to let users know that.
     req(data_check() == TRUE)
 
     vrm_data <- processed_data()
@@ -1039,6 +864,12 @@ server <- function(input, output, session) {
 
                           incProgress(0.30, detail = "Pulling ACS data")
                           pulled_acs <- pull_acs_data(county_sf = county_info, years = year_vals)
+
+                          if ("error" %in% names(pulled_acs)){
+                            # TODO:
+                            # Put a warning popup that says the acs pull didn't work
+                            # exit this function
+                          }
 
                           incProgress(0.05, detail = "Organizing ACS data")
                           organized_acs <- combine_acs_data(pulled_acs)
@@ -1378,14 +1209,230 @@ server <- function(input, output, session) {
       names(new_coefs) <- names(new_names)
 
       # replace v2 values where mapping exists (and key exists in v1)
-      idx <- names(coefs_og) %in% names(map)
-      final_coefs <- c(coefs_og[idx == FALSE],new_coefs)
+      idx <- !names(coefs_og) %in% names(new_coefs)
+      final_coefs <- c(coefs_og[idx],new_coefs)
     }
 
 
     final_coefs
 
   })
+
+  observe({
+    req(first_model())
+
+    if ("brt" %in% names(final_coefs())){
+      output$brt_question_placeholder <- renderUI({
+        radioButtons(
+          inputId = "brt_question",
+          label = "Do you plan to convert any of your routes to BRT?",
+          choices = list("No" = "no","Yes" = "yes"),
+          selected = "no",
+          inline = TRUE
+        )
+      })
+    }
+  }) |>
+    bindEvent(input$use_this_model_button)
+
+  observe({
+    req(first_model())
+
+    if ("brt" %in% names(final_coefs())){
+      output$brt_question_placeholder <- renderUI({
+        radioButtons(
+          inputId = "brt_question",
+          label = "Do you plan to convert any of your routes to BRT?",
+          choices = list("No" = "no","Yes" = "yes"),
+          selected = "no",
+          inline = TRUE
+        )
+      })
+    }
+  }) |>
+    bindEvent(input$use_this_model_button_forced)
+
+  # If BRT check is clicked, or if the model has a brt in it,
+  # then ask if they plan to have any more brt conversions
+  observe({
+    if ("brt" %in% input$forced_coef_checkbox){
+      output$brt_question_placeholder <- renderUI({
+        radioButtons(
+          inputId = "brt_question",
+          label = "Do you plan to convert any of your routes to BRT?",
+          choices = list("No" = "no","Yes" = "yes"),
+          selected = "no",
+          inline = TRUE
+        )
+      })
+    }
+
+  }) |>
+    bindEvent(input$forced_coef_checkbox)
+
+
+  ##### BRT CHNAGES CODE #####
+
+
+  # add inputs for a brt change
+  observeEvent(input$brt_question, {
+
+    if (input$brt_question == "yes"){
+
+      # render the date input
+      output$brt_date <- renderUI({
+        dateInput(
+          inputId = "brt_change_date",
+          label = "Date of change",
+          value = Sys.Date(),
+          min = Sys.Date() - 10000,
+          max = Sys.Date(),
+          width = "150px")
+      })
+
+      input_df <- processed_data()
+      routes <- input_df$route_id
+
+      if (!is.null(routes)){
+        route_list <- as.list(routes)
+      } else{
+        route_list <- list("no","routes","found")
+      }
+
+      output$brt_routes <- renderUI({
+        selectizeInput(
+          "select_brt_routes",
+          "Routes converted to BRT",
+          route_list,
+          multiple = TRUE,
+          width = "200px"
+        )
+      })
+
+
+    } else{
+      # render the date input
+      output$brt_date <- renderUI({
+        ""
+      })
+
+      output$brt_routes <- renderUI({
+        ""
+      })
+
+
+
+    }
+
+  })
+
+
+  ### COPIED AI RESPONSE FOR BRT STUFF ###
+
+  # Current agency working table
+  current_brt <- reactiveVal(
+    data.frame(
+      change_date_brt = as.Date(character()),
+      routes_brt = character(),
+      stringsAsFactors = FALSE
+    )
+  )
+
+  observeEvent(input$add_brt, {
+    req(input$brt_change_date)
+    req(!is.na(input$select_brt_routes))
+
+    df <- current_brt()
+    df <- rbind(df, data.frame(
+      change_date_brt = as.Date(input$brt_change_date),
+      routes_brt   = paste(as.character(input$select_brt_routes), collapse = ","),
+      stringsAsFactors = FALSE
+    ))
+
+    # Optional: keep sorted by date
+    df <- df[order(df$change_date_brt), ]
+
+    current_brt(df)
+  })
+
+  # Render current_brt table (editable)
+  output$tbl_brt <- renderDT({
+    datatable(
+      current_brt(),
+      rownames = FALSE,
+      selection = "multiple",
+      editable = list(target = "cell", disable = list(columns = NULL)),
+      options = list(dom = "t", paging = FALSE)
+    )  |>
+      formatStyle('change_date_brt', backgroundColor = 'lightgrey') |>
+      formatStyle('routes_brt', backgroundColor = 'lightgrey')
+  })
+
+  # Apply cell edits from DT to current_brt()
+  observeEvent(input$tbl_brt_cell_edit, {
+    info <- input$tbl_brt_cell_edit
+    df <- current_brt()
+
+    i <- info$row
+    j <- info$col + 1
+    v <- info$value
+
+    colname <- names(df)[j]
+
+    if (colname == "change_date_brt") {
+      # Expect yyyy-mm-dd; coerce to Date
+      v2 <- as.Date(v)
+      if (is.na(v2)) return()  # ignore invalid edits
+      df[i, j] <- v2
+    }
+
+    # Optional: re-sort after editing date
+    df <- df[order(df$change_date_brt), ]
+
+    current_brt(df)
+  })
+
+  # Delete selected rows
+  observeEvent(input$delete_brt, {
+    sel <- input$tbl_brt_rows_selected
+    if (length(sel) == 0) return()
+    df <- current_brt()
+    df <- df[-sel, , drop = FALSE]
+    current_brt(df)
+  })
+
+  observeEvent(input$brt_question, {
+    if (input$brt_question == "no") {
+      # clear your current_brt fare-change table
+      current_brt(current_brt()[0, , drop = FALSE])
+      # optionally reset the add-row inputs too
+      updateDateInput(session, "brt_change_date", value = Sys.Date())
+    }
+  })
+
+
+
+  brt_tbl <- reactive({
+    req(current_brt())
+
+    brt_df <- current_brt()
+
+    if (nrow(brt_df) == 0){
+      updated_brt_df <- NULL
+    } else {
+      df_list <- list()
+      for (row_num in 1:nrow(brt_df)){
+        new_df <- data.frame(change_date_brt = brt_df$change_date_brt[[row_num]], routes_brt = unlist(strsplit(brt_df$routes_brt[[row_num]],",")))
+        df_list[[row_num]] <- new_df
+      }
+
+      updated_brt_df <- bind_rows(df_list)
+    }
+
+    updated_brt_df
+
+  })
+
 
 #### 6 FORECAST AND VIZUALIZATION ####
 
@@ -1617,7 +1664,10 @@ server <- function(input, output, session) {
                                  gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                                  scenario_inputs_df = scenario_df,
                                  start_year = NULL,
-                                 start_month = NULL)
+                                 start_month = NULL) #,
+                                 #fare_df = fare_tbl(), # TODO: make sure this works
+                                # brt_df = brt_tbl())
+
 
 
         df <- df_unfiltered |>
@@ -1653,10 +1703,10 @@ server <- function(input, output, session) {
 
   ## TEST PLOT TO WORK WITH FORECASTS ##
 
-  forcast_preview <- eventReactive(input$buttonRun, {
-    req(forecast_df())
-    plot_forecast(forecast_df())
-  })
+  # forcast_preview <- eventReactive(input$buttonRun, {
+  #   req(forecast_df())
+  #   plot_forecast(forecast_df())
+  # })
 
 
   # output$forcast_plot <- renderPlot({
@@ -1676,7 +1726,6 @@ server <- function(input, output, session) {
       selected = unique(df$route_id)[1]
     )
   }, ignoreInit = TRUE)
-
 
   output$viz_plot <- renderPlot({
     req(forecast_df())

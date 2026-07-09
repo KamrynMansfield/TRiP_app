@@ -1,5 +1,4 @@
-# data_xlsx <- "../data/MARTA Data/marta_input_2013-2021.xlsx"
-# data_xlsx <- "../test_files/data_example.xlsx"
+# data_xlsx <- vrm_data
 # acs_data <- acs_data
 # gas_csv <- "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv"
 # variables <- c("[VRM]" = "log_vrm",
@@ -96,6 +95,16 @@ create_regression_model_forced <- function(data_xlsx,
 
   return(lm_vrm)
 }
+
+
+forced <- create_regression_model_forced(vrm_data,
+                                         acs_data,
+                                         gas_csv,
+                                         c("log_vrm",
+                                           "log_Gas_price",
+                                           "log_Mean_Vacant_Percent",
+                                           "log_num_0_veh",
+                                           "factor(month)"))
 
 # marta_data <- read_excel("../data/MARTA Data/Bus Data.xlsx", sheet = 4)
 #

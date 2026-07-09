@@ -1,10 +1,10 @@
-get_elasticity_varaibles <- function(model_coefs = NULL, addnl_vars){
+get_elasticity_varaibles <- function(model_coefs = NULL, addnl_vars = NULL){
 
   if (is.null(model_coefs)){
     elasticities <- c(log_vrm = .23,
                log_gas_price = .5)
   } else{
-    elasticities <- model_coefs
+    elasticities <- model_coefs[model_coefs != "brt"]
   }
 
   nice_names <- c("VRM" = "log_vrm",
@@ -19,8 +19,8 @@ get_elasticity_varaibles <- function(model_coefs = NULL, addnl_vars){
                   "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied",
                   "Labor Participation Rate" = "log_labor_part_rate",
                   "Unemployment Rate" = "log_unemp_rate",
-                  "Fares" = "fare",
-                  "BRT" = "brt",
+                  "Fares" = "log_fare",
+                  # "BRT" = "brt", # it doesn't make sense to estimate the percent increase in BRT, so I have created another way on the previous tab to just input which routes will be converted to BRT.
                   addnl_vars)
 
   elast_names <- nice_names[nice_names %in% names(elasticities)]
