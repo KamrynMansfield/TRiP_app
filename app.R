@@ -3,14 +3,13 @@ library(bslib)
 library(gridlayout)
 library(DT)
 
-options(shiny.maxRequestSize = 30 * 1024^2)  # 50 MB
+options(shiny.maxRequestSize = 30 * 1024^2)  # 30 MB
 
 #### UI ####
 ui <- page_navbar(
   id = "main_nav",
   title = "TRiP App",
   selected = "pan_1",
-  collapsible = TRUE,
   theme = bslib::bs_theme(),
 ##### 1. screening #####
   nav_panel(
@@ -83,8 +82,7 @@ ui <- page_navbar(
           textOutput(outputId = "textWarn1"),
           textOutput(outputId = "textWarn2"),
           textOutput(outputId = "textWarn3")
-        ),
-        card_body()
+        )
       )
     )
   ),
@@ -94,7 +92,7 @@ ui <- page_navbar(
     title = "2. Ridership Data Upload",
     grid_container(
       layout = c(
-        "area1 vrm  ",
+        "area1 vrm",
         "area1 vrm"
       ),
       row_sizes = c(
@@ -381,6 +379,15 @@ ui <- page_navbar(
       )
     )
   ),
+nav_panel(
+  value = "pan_65",
+  title = "6.5 testing viz inputs",
+  DTOutput("testoutput1"),
+  textOutput("testoutput2"),
+  textOutput("testoutput3"),
+  DTOutput("testoutput4"),
+  DTOutput("testoutput5")
+),
 ##### 7. Visualize #####
   nav_panel(
     value = "pan_7",
@@ -569,9 +576,9 @@ server <- function(input, output, session) {
         )
       )
     } else if(check_numeric & check_names) {
-      # maybe I should put another notification saying the file looks good
-      showNotification("File Received and Processed",
-                       type = "message")
+      # # maybe I should put another notification saying the file looks good
+      # showNotification("File Received and Processed",
+      #                  type = "message")
     } else{
       showNotification("ERROR: There was an unknown error with your file. Please double check to make sure it follows the correct formatting",
                        type = "error",
@@ -590,7 +597,7 @@ server <- function(input, output, session) {
       filter(month == 1) |>
       head()
 
-    print(upt)
+    upt
   }, bordered = TRUE)
 
   output$tableVRM <- renderTable({
@@ -785,6 +792,16 @@ server <- function(input, output, session) {
 
   # display a message stating that the plot is rendering
   observe({
+    showNotification(
+      paste("Plotting routes. Please wait a moment."),
+      type = "message",
+      duration = 20
+    )
+  }) |>
+    bindEvent(input$upload_routes)
+
+  # check to make sure it is a good file
+  observe({
     req(route_sf())
 
     if (inherits(route_sf(), "character")){
@@ -798,11 +815,7 @@ server <- function(input, output, session) {
       )
 
     } else{
-      showNotification(
-      paste("Plotting routes. Please wait a moment."),
-      type = "message",
-      duration = 20
-    )
+
     }
 
   }) |>
@@ -921,8 +934,7 @@ server <- function(input, output, session) {
                             acs_data = acs,
                             gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                             variables = vars,
-                            fare_df = fare_tbl(), # TODO: this doesn't seem to be working
-                            brt_df = brt_tbl()) # TODO: this doesn't seem to be working
+                            fare_df = fare_tbl()) # TODO: this doesn't seem to be working
   })
 
   output$tbl_mod_stepwise <- renderDT({
@@ -982,7 +994,7 @@ server <- function(input, output, session) {
   # Create the proxy handle for the output table
   proxy <- dataTableProxy("tbl_mod_stepwise")
 
-  # once vrm is uploaded, then it will update the selections for the model creation on the next page
+  # once acs is uploaded, then it will update the selections for the model creation on the next page
   observeEvent(acs_data(),
                {
                  req(acs_data())
@@ -1028,19 +1040,22 @@ server <- function(input, output, session) {
 
                })
 
+  # value to make sure the model has been run
+  model_ran <- reactiveVal(FALSE)
+
   # does the stepwise regression when the button is clicked
   model <- eventReactive(
     input$run_model_stepwise,
     ignoreNULL = TRUE,
     {
+      model_ran(TRUE)
       req(input$upload_data$datapath)
       req(acs_data())
       create_regression_model(data_xlsx = processed_data(),
                               acs_data = acs_data(),
                               gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                               variables = input$variables,
-                              fare_df = fare_tbl(), # TODO: this doesn't seem to be working
-                              brt_df = brt_tbl())
+                              fare_df = fare_tbl())
     })
 
   # creates the regression model when the button is clicked (does not get rid of any coefficients)
@@ -1054,8 +1069,7 @@ server <- function(input, output, session) {
                               acs_data = acs_data(),
                               gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                               variables = input$variables_forced,
-                              fare_df = fare_tbl(), # TODO: this doesn't seem to be working
-                              brt_df = brt_tbl())
+                              fare_df = fare_tbl())
     })
 
   # Use the proxy to swap in updated data frame
@@ -1159,10 +1173,11 @@ server <- function(input, output, session) {
 
   observeEvent(input$use_this_model_button, {
     req(first_model())
-    # pick model() if it exists, otherwise fall back to first_model()
-    m <- isolate(model())
-    if (is.null(m)){
+
+    if (model_ran() == FALSE){ # if the second model was not run, then use the first model
       m <- isolate(first_model())
+    } else{
+      m <- isolate(model())
     }
 
     selected_model(m)
@@ -1618,6 +1633,19 @@ server <- function(input, output, session) {
 
   ## RUNNING FORECASTS ##
 
+  output$testoutput1 <- renderDT({
+    head(saved$by_route,10)
+  })
+  output$testoutput2 <- renderText(routes())
+  output$testoutput3 <- renderText(final_coefs())
+  output$testoutput4 <- renderDT({
+    head(acs_data(),10)
+  })
+  output$testoutput5 <- renderDT({
+    head(processed_data(),10)
+    })
+
+
   forecast_df <- eventReactive(input$buttonRun, {
 
     req(final_coefs())
@@ -1631,6 +1659,8 @@ server <- function(input, output, session) {
 
     coefs <- final_coefs()
     acs <- acs_data()
+
+    processed_data <- processed_data()
 
     grouped_routes <- saved_predictions |>
       group_by(Route) |>
@@ -1659,7 +1689,7 @@ server <- function(input, output, session) {
           filter(Route == one_route_in_group)
 
         df_unfiltered <- forecast_ridership(coefs = coefs,
-                                 data_xlsx = processed_data(),
+                                 data_xlsx = processed_data,
                                  acs_data = acs,
                                  gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                                  scenario_inputs_df = scenario_df,
@@ -1701,12 +1731,12 @@ server <- function(input, output, session) {
   })
 
 
-  ## TEST PLOT TO WORK WITH FORECASTS ##
+  ## PLOT TO WORK WITH FORECASTS ##
 
-  # forcast_preview <- eventReactive(input$buttonRun, {
-  #   req(forecast_df())
-  #   plot_forecast(forecast_df())
-  # })
+  forcast_preview <- eventReactive(input$buttonRun, {
+    req(forecast_df())
+    plot_forecast(forecast_df())
+  })
 
 
   # output$forcast_plot <- renderPlot({

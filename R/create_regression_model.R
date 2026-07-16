@@ -35,6 +35,10 @@ create_regression_model <- function(data_xlsx,
 
   df_all_log <- make_model_data_frame(data_xlsx, acs_data, gas_csv, fare_df, brt_df)
 
+  # changing the reference monthe to December (just for now)
+  # TODO: Delet this eventually
+  # df_all_log$month <- relevel(factor(df_all_log$month), ref = "12")
+
   candidate_variables <- variables
 
   rejected_var <- "placeholder"
@@ -89,6 +93,10 @@ create_regression_model_forced <- function(data_xlsx,
 
   df_all_log <- make_model_data_frame(data_xlsx, acs_data, gas_csv, fare_df, brt_df)
 
+  # changing the reference monthe to December (just for now)
+  # TODO: Delet this eventually
+  # df_all_log$month <- relevel(factor(df_all_log$month), ref = "12")
+
   candidate_variables <- variables
 
   lm_vrm <- feols(as.formula(paste("log_upt_avg~", paste(candidate_variables, collapse = " + "), "| route_id")), data=df_all_log, cluster= ~route_id)
@@ -96,27 +104,43 @@ create_regression_model_forced <- function(data_xlsx,
   return(lm_vrm)
 }
 
-
-forced <- create_regression_model_forced(vrm_data,
-                                         acs_data,
-                                         gas_csv,
-                                         c("log_vrm",
-                                           "log_Gas_price",
-                                           "log_Mean_Vacant_Percent",
-                                           "log_num_0_veh",
-                                           "factor(month)"))
-
-# marta_data <- read_excel("../data/MARTA Data/Bus Data.xlsx", sheet = 4)
+# og_model <- read_excel("../data/MARTA Data/comparing models.xlsx",2)
 #
-# lm_vrm <- feols(log_UPT ~ factor(Month) + log_VRM + log_Gas_price + log_num_0_veh + log_Mean_Vacant_Percent | Route, data=marta_data, cluster= ~Route)
-# lm_vrm_2 <- feols(log_UPT ~ factor(Month) + log_VRM + log_Gas_price + log_num_0_veh + log_Mean_Vacant_Percent | Route, data=marta_data)
+# marta_data <- read_excel("../data/MARTA Data/Bus Data Filtered.xlsx", 1)
+#
+# marta_data_filter <- marta_data |>
+#   mutate(date = ym(paste0(Year,"-",Month))) |>
+#   filter(date < ym("2021-10"),
+#          date >= ym("2013-01")) |>
+#   filter(!is.na(date))
+#
+# marta_data_filter$Month <- relevel(factor(marta_data_filter$Month), ref = "12")
+#
+# # # What if we just make the log zero if the actual is zero
+# # marta_data_filter <- marta_data_filter |>
+# #   mutate(log_UPT = ifelse(UPT == 0, 0,log_UPT),
+# #          log_VRM = ifelse(VRM == 0, 0,log_VRM))
+#
+# formula <- as.formula("log_UPT ~ log_VRM + log_Gas_price + log_Mean_Vacant_Percent + log_num_0_veh + Month | Route")
+#
+# marta_model <- feols(formula, data=marta_data_filter, cluster= ~Route)
 #
 #
+# model_df <- data.frame(var = names(coef(marta_model)), coef_new = round(coef(marta_model),3))
 #
-# coefs <- coef(lm_vrm)
-# data.frame(variable = names(coefs),
-#            coef = coefs) |>
+# og_model |>
+#   left_join(model_df, by = "var") |>
+#   mutate(diff = round(coef_new - coef, 3)) |>
 #   gt()
-
+#
+# # Count rows with missing values in your model variables
+# vars <- c("log_UPT", "log_VRM", "log_Gas_price", "log_Mean_Vacant_Percent","log_num_0_veh","Month")
+# sum(!complete.cases(marta_data_filter[, vars]))
+#
+# excluded_data <- marta_data_filter[!complete.cases(marta_data_filter[, vars]),]
+#
+# marta_data_filter |>
+#   filter(!is.na(Month)) |>
+#   nrow()
 
 
