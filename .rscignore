@@ -1,2 +1,7 @@
+.Rproj.user
+.Rhistory
+.RData
 .DS_Store
+**/.DS_Store
 rosm.cache/
+renv/library/

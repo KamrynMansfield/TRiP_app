@@ -6,6 +6,8 @@ library(DT)
 options(shiny.maxRequestSize = 30 * 1024^2, # 30 MB
         shiny.reactlog = TRUE)
 
+
+
 #### UI ####
 ui <- page_navbar(
   id = "main_nav",
@@ -47,7 +49,7 @@ ui <- page_navbar(
             inputId = "qRedesign",
             label = "Has your agency had a system redesign within the last three years?",
             choices = list(
-              "Yes" = "Warning: Because your agency has implemented a system redesign within the last three years, historic route ridership data may not accurately reflect current of future service patterns. As a result, this tool may not provide reliable ridership forecasts for your system.",
+              "Yes" = "Warning: Because your agency has implemented a system redesign within the last three years, historic route ridership data may not accurately reflect current or future service patterns. As a result, this tool may not provide reliable ridership forecasts for your system.",
               "No" = ""
             ),
             width = "100%",
@@ -72,7 +74,8 @@ ui <- page_navbar(
             ),
             width = "100%",
             selected = ""
-          )
+          ),
+          actionButton("compatibility_button", "Check Compatibility", class = "btn-primary")
         ),
         card_header(),
         card_body()
@@ -81,8 +84,8 @@ ui <- page_navbar(
         area = "area1",
         card_body(
           textOutput(outputId = "textWarn1"),
-          textOutput(outputId = "textWarn2"),
-          textOutput(outputId = "textWarn3")
+          textOutput(outputId = "api_test"),
+          uiOutput(outputId = "screening_button_placeholder")
         )
       )
     )
@@ -455,29 +458,120 @@ ui <- page_navbar(
 server <- function(input, output, session) {
 
 #### 1. SCREENING ####
-  output$textWarn1 <- renderText({
-    if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
-      paste("This app might be useful to your agency :)")
-    } else{
-      paste(input$qRedesign)
-    }
+
+  output$api_test <- renderText({
+    key <- Sys.getenv("CENSUS_API_KEY")
+    paste0("Your API key is [", key, "]")
   })
 
-  output$textWarn2 <- renderText({
-    if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
-      paste("")
-    } else{
-      paste(input$qUniversity)
-    }
-  })
+  observe({
 
-  output$textWarn3 <- renderText({
     if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
-      paste("")
+      text_output <- paste("This app might be useful to your agency :)")
+    } else if (input$qRedesign == "" & input$qUniversity == ""){
+      text_output <- paste("Because this app was created to work with bus networks,
+            this app may not meet your needs.
+            If there have been no recent investments in rail transit,
+            you might be able to use this app if you exclude non-bus routes.")
+    } else if (input$qRedesign == "" & input$qRail == ""){
+      text_output <- paste("Since most of your system ridership comes from a university or a single employer,
+            the variables used in this app may not be the largest predictors of ridership,
+            and, therefore, the app's predictions may not be accurate.
+            Note that if you have your own data to capture these unique circumstances,
+            there is an option to add those to the model.")
+    } else if (input$qRail == "" & input$qUniversity == ""){
+      text_output <- paste("Because your agency has implemented a system redesign within the last three years,
+            historic route ridership data may not accurately reflect current or future service patterns.
+            As a result, this tool may not provide reliable ridership forecasts for your system.")
+    } else if (input$qRail == ""){
+      text_output <- paste("Because your agency has implemented a system redesign within the last three years,
+            historic route ridership data may not accurately reflect current or future service patterns.
+            As a result, this tool may not provide reliable ridership forecasts for your system.
+            Additionally, since most of your system ridership comes from a university or a single employer,
+            the variables used in this app may not be the largest predictors of ridership,
+            and, therefore, the app's predictions may not be accurate.
+            Note that if you have your own data to capture these unique circumstances,
+            there is an option to add those to the model.")
+    } else if (input$qRedesign == ""){
+      text_output <- paste("Since most of your system ridership comes from a university or a single employer,
+            the variables used in this app may not be the largest predictors of ridership,
+            and, therefore, the app's predictions may not be accurate.
+            Note that if you have your own data to capture these unique circumstances,
+            there is an option to add those to the model.
+            Additionally, because this app was created to work with bus networks,
+            this app may not meet your needs.
+            If there have been no recent investments in rail transit,
+            you might be able to use this app if you exclude non-bus routes.")
+    } else if (input$qUniversity == ""){
+      text_output <- paste("Because your agency has implemented a system redesign within the last three years,
+            historic route ridership data may not accurately reflect current or future service patterns.
+            As a result, this tool may not provide reliable ridership forecasts for your system.
+            Additionally, because this app was created to work with bus networks,
+            this app may not meet your needs.
+            If there have been no recent investments in rail transit,
+            you might be able to use this app if you exclude non-bus routes.")
+
     } else{
-      paste(input$qRail)
+      text_output <- paste("There are a few reasons why this app may not meet your needs.
+      (1) Because your agency has implemented a system redesign within the last three years,
+            historic route ridership data may not accurately reflect current or future service patterns.
+            As a result, this tool may not provide reliable ridership forecasts for your system.
+            (2) Since most of your system ridership comes from a university or a single employer,
+            the variables used in this app may not be the largest predictors of ridership,
+            and, therefore, the app's predictions may not be accurate.
+            Note that if you have your own data to capture these unique circumstances,
+            there is an option to add those to the model.
+            (3) Because this app was created to work with bus networks,
+            this app may not meet your needs.
+            If there have been no recent investments in rail transit,
+            you might be able to use this app if you exclude non-bus routes.")
+
     }
-  })
+
+
+    output$textWarn1 <- renderText(text_output)
+
+    if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
+      output$screening_button_placeholder <- renderUI({
+        input_task_button("screening_button", "Continue")
+      })
+    } else{
+      output$screening_button_placeholder <- renderUI({
+        input_task_button("screening_button", "Continue Anyways")
+      })
+    }
+
+  }) |>
+    bindEvent(input$compatibility_button)
+
+  observe({
+    bslib::nav_select("main_nav", "pan_2")
+  }) |>
+    bindEvent(input$screening_button)
+
+  # output$textWarn1 <- renderText({
+  #   if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
+  #     paste("This app might be useful to your agency :)")
+  #   } else{
+  #     paste(input$qRedesign)
+  #   }
+  # })
+  #
+  # output$textWarn2 <- renderText({
+  #   if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
+  #     paste("")
+  #   } else{
+  #     paste(input$qUniversity)
+  #   }
+  # })
+  #
+  # output$textWarn3 <- renderText({
+  #   if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
+  #     paste("")
+  #   } else{
+  #     paste(input$qRail)
+  #   }
+  # })
 
 #### 2. RIDERSHIP DATA UPLOAD ####
 
@@ -850,6 +944,21 @@ server <- function(input, output, session) {
                           incProgress(0.20, detail = "Pulling in census tracts")
                           census_tract_geom <- get_tract_geometry(state_fps, county_fps, year_vals)
 
+                          if (is.null(census_tract_geom)){
+                            showModal(
+                              modalDialog(
+                                title = "ERROR",
+                                easy_close = TRUE,
+                                "Unable to retrieve census data.
+                                If you are offline or there is a government shutdown, the data is unable to be accessed.
+                                If you have good connection and www.census.gov seems to be working properly,
+                                you might find success by simply trying this function again."
+                              )
+                            )
+                          }
+
+                          req(census_tract_geom)
+
                           incProgress(0.15, detail = "Finding tracts that intersect bus routes")
                           tract_buffer_data <- create_intersecting_tract_percentages(
                             census_tract_geom, route_geom
@@ -858,11 +967,20 @@ server <- function(input, output, session) {
                           incProgress(0.30, detail = "Pulling ACS data")
                           pulled_acs <- pull_acs_data(county_sf = county_info, years = year_vals)
 
-                          if ("error" %in% names(pulled_acs)){
-                            # TODO:
-                            # Put a warning popup that says the acs pull didn't work
-                            # exit this function
+                          if ("errors" %in% names(pulled_acs)){
+                            showModal(
+                              modalDialog(
+                                title = "ERROR",
+                                easy_close = TRUE,
+                                "Unable to retrieve census data.
+                                If you are offline or there is a government shutdown, the data is unable to be accessed.
+                                If you have good connection and www.census.gov seems to be working properly,
+                                you might find success by simply trying this function again."
+                              )
+                            )
                           }
+
+                          req(!"errors" %in% names(pulled_acs))
 
                           incProgress(0.05, detail = "Organizing ACS data")
                           organized_acs <- combine_acs_data(pulled_acs)
@@ -1767,7 +1885,10 @@ server <- function(input, output, session) {
   # Show a preview of the output that is about to be downloaded
   output$outputExample <- renderDT({
     req(forecast_df())
-    output_df()
+    output_df <- output_df()
+    output_df |>
+      mutate(avg_daily_upt = round(avg_daily_upt,1),
+             tot_weekday_upt = round(tot_weekday_upt,1))
   })
 
   # Handle the csv download
