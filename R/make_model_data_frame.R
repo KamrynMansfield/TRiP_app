@@ -116,27 +116,5 @@ make_model_data_frame <- function(data_xlsx,
     df_all_log$brt <- FALSE
   }
 
-  # # add brt column
-  # if (!is.null(brt_df)){
-  #   df_all_log$brt <- FALSE
-  #   df_all_log$month_numeric <- as.numeric(df_all_log$month)
-  #
-  #   for (row_id in 1:nrow(brt_df)){
-  #     date_used <- as.character(ymd(brt_df$change_date_brt[[row_id]]))
-  #     month_used <- as.numeric(month(date_used))
-  #     year_used <- as.numeric(year(date_used))
-  #     brt_route <- as.numeric(brt_df$routes_brt[[row_id]])
-  #
-  #     df_all_log <- df_all_log |>
-  #       mutate(brt = case_when(
-  #         month_numeric >= month_used & year >= year_used & route_id == brt_route ~ TRUE,
-  #         TRUE ~ brt
-  #       ))
-  #   }
-  #   df_all_log$month_numeric <- NULL
-  # } else{
-  #   df_all_log$brt <- 0
-  # }
-
   return(df_all_log)
 }

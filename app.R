@@ -3,7 +3,8 @@ library(bslib)
 library(gridlayout)
 library(DT)
 
-options(shiny.maxRequestSize = 30 * 1024^2)  # 30 MB
+options(shiny.maxRequestSize = 30 * 1024^2, # 30 MB
+        shiny.reactlog = TRUE)
 
 #### UI ####
 ui <- page_navbar(
@@ -379,15 +380,6 @@ ui <- page_navbar(
       )
     )
   ),
-nav_panel(
-  value = "pan_65",
-  title = "6.5 testing viz inputs",
-  DTOutput("testoutput1"),
-  textOutput("testoutput2"),
-  textOutput("testoutput3"),
-  DTOutput("testoutput4"),
-  DTOutput("testoutput5")
-),
 ##### 7. Visualize #####
   nav_panel(
     value = "pan_7",
@@ -600,17 +592,6 @@ server <- function(input, output, session) {
     upt
   }, bordered = TRUE)
 
-  output$tableVRM <- renderTable({
-    vrm <- data.frame(month = rep(1:12,2),
-                      year = as.character(c(rep(2024,12),rep(2025,12))),
-                      `12` = sample(500:1000, 24),
-                      `20` = sample(500:1000, 24),
-                      `30` = sample(5000:6000, 24),
-                      `31` = sample(8000:10000, 24))
-    names(vrm) <- c("month","year","12","20","30","31")
-    print(vrm)
-  })
-
 
   addnl_vars <- reactive({
     req(processed_data())
@@ -764,6 +745,15 @@ server <- function(input, output, session) {
 
   })
 
+  # display a message stating that the plot is rendering
+  observe({
+    showNotification(
+      paste("Plotting routes. Please wait a moment."),
+      type = "message",
+      duration = 20
+    )
+  }) |>
+    bindEvent(input$upload_routes)
 
   # getting the counties it touches
   county_sf <- reactive({
@@ -789,16 +779,6 @@ server <- function(input, output, session) {
       input_task_button("get_acs", "Get Census Data")
     })
   })
-
-  # display a message stating that the plot is rendering
-  observe({
-    showNotification(
-      paste("Plotting routes. Please wait a moment."),
-      type = "message",
-      duration = 20
-    )
-  }) |>
-    bindEvent(input$upload_routes)
 
   # check to make sure it is a good file
   observe({
@@ -1111,6 +1091,8 @@ server <- function(input, output, session) {
     new_coeff_df <-  data.frame("Variable" = vars,
                                 "Coeff" = round(created_model$coefficients, 3),
                                 "P-value" = round(fixest::pvalue(created_model), 3))
+
+    rownames(new_coeff_df) <- NULL
 
     replaceData(proxy, new_coeff_df, resetPaging = FALSE)
   })
@@ -1633,19 +1615,6 @@ server <- function(input, output, session) {
 
   ## RUNNING FORECASTS ##
 
-  output$testoutput1 <- renderDT({
-    head(saved$by_route,10)
-  })
-  output$testoutput2 <- renderText(routes())
-  output$testoutput3 <- renderText(final_coefs())
-  output$testoutput4 <- renderDT({
-    head(acs_data(),10)
-  })
-  output$testoutput5 <- renderDT({
-    head(processed_data(),10)
-    })
-
-
   forecast_df <- eventReactive(input$buttonRun, {
 
     req(final_coefs())
@@ -1688,6 +1657,9 @@ server <- function(input, output, session) {
         scenario_df <- grouped_predictions |>
           filter(Route == one_route_in_group)
 
+        cat("scneario_df")
+        print(scenario_df)
+
         df_unfiltered <- forecast_ridership(coefs = coefs,
                                  data_xlsx = processed_data,
                                  acs_data = acs,
@@ -1697,20 +1669,34 @@ server <- function(input, output, session) {
                                  start_month = NULL) #,
                                  #fare_df = fare_tbl(), # TODO: make sure this works
                                 # brt_df = brt_tbl())
-
-
+        cat("head(df_unfiltered)")
+        print(head(df_unfiltered))
+        cat("tail(df_unfiltered)")
+        print(tail(df_unfiltered))
 
         df <- df_unfiltered |>
           filter(route_id %in% unique(filtered_grouped_predictions$Route))
 
+        cat("head(df)")
+        print(head(filter(df, year == 2026)))
+        cat("tail(df)")
+        print(tail(filter(df, year == 2026)))
+
         forecast_dfs[[as.character(group_id)]] <- df
       }
+
+
 
       observeEvent(input$buttonRun, {
         bslib::nav_select("main_nav", "pan_7")
       })
 
       final_df <- bind_rows(forecast_dfs)
+
+      cat("head(final_df)")
+      print(head(filter(final_df, year == 2026)))
+      cat("tail(final_df)")
+      print(tail(filter(final_df, year == 2026)))
 
       df_all_routes <- final_df |>
         summarize(route_id = "all_routes",
@@ -1775,7 +1761,7 @@ server <- function(input, output, session) {
 
   output_df <- reactive({
     forecast_df() |>
-      select(route_id, year, month, avg_daily_upt, tot_weekday_upt, forecast, scenario)
+      select(route_id, year, month, avg_daily_upt, tot_weekday_upt, forecast, scenario, date)
   })
 
   # Show a preview of the output that is about to be downloaded
