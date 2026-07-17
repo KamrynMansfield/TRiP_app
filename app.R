@@ -7,6 +7,13 @@ options(shiny.maxRequestSize = 30 * 1024^2, # 30 MB
         shiny.reactlog = TRUE)
 
 
+key <- Sys.getenv("CENSUS_API_KEY")
+if (nzchar(key)) {
+  census_api_key(key, install = FALSE, overwrite = TRUE)
+} else {
+  stop("CENSUS_API_KEY not set in the environment.")
+}
+
 
 #### UI ####
 ui <- page_navbar(
@@ -84,7 +91,6 @@ ui <- page_navbar(
         area = "area1",
         card_body(
           textOutput(outputId = "textWarn1"),
-          textOutput(outputId = "api_test"),
           uiOutput(outputId = "screening_button_placeholder")
         )
       )
@@ -146,9 +152,13 @@ ui <- page_navbar(
                     width = "100%"),
           hr(),
           h5("Input Data Example"),
-          "The uploaded data must be an excel file formatted in this way. \n",
-          "Note that route_id must match the route id in the GTFS files",
-          tableOutput(outputId = "example_input"),
+          "The uploaded data must match the format shown below.",
+          "The column names must match exactly.",
+          "If you have routes classified as Bus Rapid Transit, you may optionally add a brt column.",
+          "The values in the route_id column must match the route id in the GTFS files.",
+          "If you have you own variables you would also like to model, you may add columns that contain positive integers.",
+          # tableOutput(outputId = "example_input"),
+          tags$img(src = "data_example.png",),
           hr(),
           "Just a few more questions before creating your model for forecasting.",
           radioButtons(
@@ -219,6 +229,10 @@ ui <- page_navbar(
           gap_size = "10px",
           grid_card(
             area = "area0",
+            card_header(
+              "On this side, you can force any of the variables to be in the model.
+              Once you have the model that you think is best, you may choose which model you want to continue with."
+            ),
             selectizeInput(inputId = "variables_forced",
                            label = "Adding Variables (optional)",
                            choices = NULL,
@@ -230,6 +244,11 @@ ui <- page_navbar(
           ),
           grid_card(
             area = "area1",
+            card_header(
+              "Once your data is loaded, you will see the coefficients and
+              p-values of the model that was created using a backwards stepwise method.
+              You can see how the model changes by deleting variables and rerunning the stepwise regression"
+            ),
             card_body(
               selectizeInput(
                 inputId = "variables",
@@ -459,11 +478,6 @@ server <- function(input, output, session) {
 
 #### 1. SCREENING ####
 
-  output$api_test <- renderText({
-    key <- Sys.getenv("CENSUS_API_KEY")
-    paste0("Your API key is [", key, "]")
-  })
-
   observe({
 
     if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
@@ -674,17 +688,18 @@ server <- function(input, output, session) {
   }) |>
     bindEvent(processed_data())
 
-  output$example_input <- renderTable({
-    upt <- read_excel("data/data_example.xlsx") |>
-      mutate(month = as.character(month),
-             year = as.character(year),
-             upt = round(upt,1),
-             vrm = round(vrm,1)) |>
-      filter(month == 1) |>
-      head()
-
-    upt
-  }, bordered = TRUE)
+  # I replaced this with an image. I think that will be better
+  # output$example_input <- renderTable({
+  #   upt <- read_excel("data/data_example.xlsx") |>
+  #     mutate(month = as.character(month),
+  #            year = as.character(year),
+  #            upt = round(upt,1),
+  #            vrm = round(vrm,1)) |>
+  #     filter(month == 1) |>
+  #     head()
+  #
+  #   upt
+  # }, bordered = TRUE)
 
 
   addnl_vars <- reactive({
@@ -951,7 +966,7 @@ server <- function(input, output, session) {
                                 easy_close = TRUE,
                                 "Unable to retrieve census data.
                                 If you are offline or there is a government shutdown, the data is unable to be accessed.
-                                If you have good connection and www.census.gov seems to be working properly,
+                                If you have good internet connection and www.census.gov seems to be working properly,
                                 you might find success by simply trying this function again."
                               )
                             )
@@ -974,7 +989,7 @@ server <- function(input, output, session) {
                                 easy_close = TRUE,
                                 "Unable to retrieve census data.
                                 If you are offline or there is a government shutdown, the data is unable to be accessed.
-                                If you have good connection and www.census.gov seems to be working properly,
+                                If you have good internet connection and www.census.gov seems to be working properly,
                                 you might find success by simply trying this function again."
                               )
                             )
@@ -1775,8 +1790,6 @@ server <- function(input, output, session) {
         scenario_df <- grouped_predictions |>
           filter(Route == one_route_in_group)
 
-        cat("scneario_df")
-        print(scenario_df)
 
         df_unfiltered <- forecast_ridership(coefs = coefs,
                                  data_xlsx = processed_data,
@@ -1787,18 +1800,10 @@ server <- function(input, output, session) {
                                  start_month = NULL) #,
                                  #fare_df = fare_tbl(), # TODO: make sure this works
                                 # brt_df = brt_tbl())
-        cat("head(df_unfiltered)")
-        print(head(df_unfiltered))
-        cat("tail(df_unfiltered)")
-        print(tail(df_unfiltered))
+
 
         df <- df_unfiltered |>
           filter(route_id %in% unique(filtered_grouped_predictions$Route))
-
-        cat("head(df)")
-        print(head(filter(df, year == 2026)))
-        cat("tail(df)")
-        print(tail(filter(df, year == 2026)))
 
         forecast_dfs[[as.character(group_id)]] <- df
       }
@@ -1810,11 +1815,6 @@ server <- function(input, output, session) {
       })
 
       final_df <- bind_rows(forecast_dfs)
-
-      cat("head(final_df)")
-      print(head(filter(final_df, year == 2026)))
-      cat("tail(final_df)")
-      print(tail(filter(final_df, year == 2026)))
 
       df_all_routes <- final_df |>
         summarize(route_id = "all_routes",
@@ -1868,12 +1868,6 @@ server <- function(input, output, session) {
     plot_forecast(df, route = input$input_route_to_plot)
   })
 
-  # output$viz_plot_2 <- renderPlot({
-  #   req(forecast_df())
-  #   req(forcast_preview())
-  #   df <- forecast_df()
-  #   plot_forecast_facet(df)
-  # })
 
 #### 8. FINAL DOWNLOAD PAGE ####
 

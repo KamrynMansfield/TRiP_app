@@ -112,26 +112,6 @@ forecast_ridership <- function(coefs,
            months_from_ref = time_length(interval(ref_date, date), unit = "month")) |>
     select(!c("date","ref_date"))
 
-
-  cat("min_year \n")
-  print(min_year)
-  cat("elasticities \n")
-  print(elasticities)
-  cat("month_coefs \n")
-  print(month_coefs)
-  cat("year_lin_coef \n")
-  print(year_lin_coef)
-  cat("year_quad_coef \n")
-  print(year_quad_coef)
-  cat("brt_coef \n")
-  print(brt_coef)
-  cat("route_reference \n")
-  print(head(route_reference))
-  cat("scenario_df \n")
-  print(head(scenario_df))
-  cat("forecast_grid \n")
-  print(head(forecast_grid))
-
   # add brt column to forecast_grid
   if (!is.null(brt_df)){
     forecast_grid$brt <- 0
@@ -153,9 +133,6 @@ forecast_ridership <- function(coefs,
   } else{
     forecast_grid$brt <- 0
   }
-
-  cat("new forecast_grid \n")
-  print(head(forecast_grid))
 
   #' add scenarios to forecast_grid
   #' and get elasticity factors
@@ -206,17 +183,8 @@ forecast_ridership <- function(coefs,
       forecast = TRUE
     )
 
-  cat("last cols of forecast_expanded \n")
-  print(head(forecast_expanded[,(ncol(forecast_expanded) - 4):ncol(forecast_expanded)]))
-
-  cat("last cols of forecast_factors \n")
-  print(head(forecast_factors[,(ncol(forecast_factors) - 4):ncol(forecast_factors)]))
-
   # Get the name of the column containing "multiply"
   target_col <- grep("factor", names(forecast_factors), value = TRUE)
-
-  cat("target_col \n")
-  print(target_col)
 
   # Add a new column 'product_result' to the dataframe
   forecast_full <- forecast_factors |>
@@ -226,9 +194,6 @@ forecast_ridership <- function(coefs,
     mutate(avg_daily_upt = ref_ridership * total_growth) |>
     select(route_id, year, month, scenario, forecast, avg_daily_upt)
 
-  cat("last cols of forecast_full \n")
-  print(head(forecast_full[,(ncol(forecast_full) - 4):ncol(forecast_full)]))
-
   # combine forecasts and observed upt into one big df
   final_df <- df_all_log |>
     mutate(avg_daily_upt = exp(log_upt_avg),
@@ -237,9 +202,6 @@ forecast_ridership <- function(coefs,
            month = as.integer(month)) |>
     select(route_id, year, month, scenario, forecast, avg_daily_upt) |>
     bind_rows(forecast_full)
-
-  cat("last cols of final_df \n")
-  print(head(final_df[,(ncol(final_df) - 4):ncol(final_df)]))
 
   # create a new route that combines the upt of all the routes
   new_route_df <- final_df |>
@@ -271,9 +233,6 @@ forecast_ridership <- function(coefs,
     mutate(tot_weekday_upt = avg_daily_upt * weekdays_in_month)|>
     mutate(date = ym(paste(year, month,sep = "/")))  |>
     select(route_id, year, month, avg_daily_upt,tot_weekday_upt, forecast, scenario, date)
-
-  cat("last cols of new_final_df \n")
-  print(head(new_final_df[,(ncol(new_final_df) - 4):ncol(new_final_df)]))
 
   return(new_final_df)
 }
