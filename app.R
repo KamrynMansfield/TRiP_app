@@ -138,7 +138,8 @@ ui <- page_navbar(
           conditionalPanel(
             condition = "input.has_fare_changes === 'yes'",
             DTOutput("tbl")
-          )
+          ),
+          uiOutput(outputId = "rider_data_next_placeholder")
         )
       ),
       grid_card(
@@ -676,9 +677,15 @@ server <- function(input, output, session) {
         )
       )
     } else if(check_numeric & check_names) {
-      # # maybe I should put another notification saying the file looks good
-      # showNotification("File Received and Processed",
-      #                  type = "message")
+      # maybe I should put another notification saying the file looks good
+      showNotification("File Received and Processed",
+                       type = "message")
+
+      output$rider_data_next_placeholder <- renderUI({
+        input_task_button("rider_data_next", "Continue")
+      })
+
+
     } else{
       showNotification("ERROR: There was an unknown error with your file. Please double check to make sure it follows the correct formatting",
                        type = "error",
@@ -688,19 +695,10 @@ server <- function(input, output, session) {
   }) |>
     bindEvent(processed_data())
 
-  # I replaced this with an image. I think that will be better
-  # output$example_input <- renderTable({
-  #   upt <- read_excel("data/data_example.xlsx") |>
-  #     mutate(month = as.character(month),
-  #            year = as.character(year),
-  #            upt = round(upt,1),
-  #            vrm = round(vrm,1)) |>
-  #     filter(month == 1) |>
-  #     head()
-  #
-  #   upt
-  # }, bordered = TRUE)
-
+  observe({
+    bslib::nav_select("main_nav", "pan_3")
+  }) |>
+    bindEvent(input$rider_data_next)
 
   addnl_vars <- reactive({
     req(processed_data())

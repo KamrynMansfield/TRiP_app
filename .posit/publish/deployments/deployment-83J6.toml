@@ -10,8 +10,8 @@ id = "019f7142-d057-c4b5-68a3-3421b30aab9e"
 dashboard_url = "https://connect.posit.cloud/kamrynmansfield/content/019f7142-d057-c4b5-68a3-3421b30aab9e"
 direct_url = "https://019f7142-d057-c4b5-68a3-3421b30aab9e.share.connect.posit.cloud"
 logs_url = "https://connect.posit.cloud/kamrynmansfield/content/019f7142-d057-c4b5-68a3-3421b30aab9e/history"
-deployed_at = "2026-07-17T20:44:58.330Z"
-bundle_id = "019f71d2-197d-9bbc-8a82-87085f3d0215"
+deployed_at = "2026-07-17T21:51:32.957Z"
+bundle_id = "019f720f-148a-3a1b-8857-d805955729b4"
 files = [
     ".posit/publish/TRiP_app-P3JT.toml",
     ".posit/publish/deployments/deployment-83J6.toml",
@@ -41,6 +41,7 @@ files = [
     "data/state_planes_crs.rda",
     "data/us_counties.rds",
     "data/~$data_example.xlsx",
+    "www/data_example.png",
 ]
 
 [connect_cloud]
@@ -57,6 +58,7 @@ files = [
     "/.posit/publish/deployments/deployment-83J6.toml",
     "/R",
     "/data",
+    "/www",
 ]
 validate = true
 product_type = "connect_cloud"

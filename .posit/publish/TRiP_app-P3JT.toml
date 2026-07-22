@@ -11,6 +11,7 @@ files = [
     "/.posit/publish/deployments/deployment-83J6.toml",
     "/R",
     "/data",
+    "/www",
 ]
 validate = true
 product_type = "connect_cloud"
