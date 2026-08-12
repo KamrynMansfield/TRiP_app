@@ -145,7 +145,7 @@ ui <- page_navbar(
       grid_card(
         area = "area1",
         card_body(
-          "Upload a properly formatted excel file with monthly Unlinked Passenger Trips (UPT) and Vehicle Revenue Miles (VRM) for each route.",
+          "Upload a properly formatted excel file with monthly weekday Unlinked Passenger Trips (UPT) and Vehicle Revenue Miles (VRM) for each route.",
           "(seen example below for data format) \n",
           "Due to unusual ridership patterns during the COVID19 pandemic, it is recommended that your data not go back past the year 2023.",
           fileInput("upload_data", "",
@@ -153,13 +153,16 @@ ui <- page_navbar(
                     width = "100%"),
           hr(),
           h5("Input Data Example"),
-          "The uploaded data must match the format shown below.",
+
+          # tableOutput(outputId = "example_input"),
+          tags$img(src = "data_example.png",),
+          "The uploaded data must match the format shown above",
           "The column names must match exactly.",
           "If you have routes classified as Bus Rapid Transit, you may optionally add a brt column.",
           "The values in the route_id column must match the route id in the GTFS files.",
-          "If you have you own variables you would also like to model, you may add columns that contain positive integers.",
-          # tableOutput(outputId = "example_input"),
-          tags$img(src = "data_example.png",),
+          "If you have you own variables you would also like to model, you may add columns that contain positive integers. The model
+          will take the natural logarithm of any added variables, so, if you add any variables,
+          just list actual values and avoid putting 'log' in the column name.",
           hr(),
           "Just a few more questions before creating your model for forecasting.",
           radioButtons(
@@ -310,7 +313,7 @@ ui <- page_navbar(
       grid_card(
         area = "area1",
         card_body(
-          "Research has cited the following elasticities for select coefficients. If you would prefer to replace or add these coefficients to your model, you can check the coefficient. ",
+          "Research has cited the following elasticities for select coefficients. If you would prefer to replace or add these coefficients to your model, you can check the corresponding boxes.",
           checkboxGroupInput(
             inputId = "forced_coef_checkbox",
             label = "Common Coefficient Values",
@@ -593,9 +596,24 @@ server <- function(input, output, session) {
   # Read and modify the uploaded data
   processed_data <- reactive({
     req(input$upload_data) # Ensure a file is uploaded
-    df <- read_excel(input$upload_data$datapath)
+    path <- input$upload_data$datapath
+    is_xlsx <- grepl("\\.xlsx$", tolower(path))
 
-    return(df)
+    if (is_xlsx){
+      df <- read_excel(path)
+      return(df)
+    } else{
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "File must be an excel file (.xlsx)"
+        )
+      )
+      return(NULL)
+    }
+
+
   })
 
   # checking to make sure the data is formatted correctly
@@ -636,11 +654,23 @@ server <- function(input, output, session) {
     sum(check_numeric_long[-1]) == length(check_numeric_long[-1])
   })
 
+  check_log <- reactive({
+    req(processed_data())
+    df <- processed_data()
+
+    col_names <- names(df)
+
+    has_log <- grepl("log_",col_names, ignore.case = TRUE)
+
+    sum(has_log) == 0
+
+  })
+
   data_check <- reactive({
     req(check_names())
     req(check_numeric())
 
-    check_names() == TRUE & check_numeric() == TRUE
+    check_names() == TRUE & check_numeric() == TRUE & check_log() == TRUE
   })
 
 
@@ -651,8 +681,33 @@ server <- function(input, output, session) {
 
     check_names <- check_names()
     check_numeric <- check_numeric()
+    check_log <- check_log()
 
-    if (check_names == FALSE & check_numeric == FALSE){
+    if (check_names == FALSE & check_numeric == FALSE & check_log == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm). You also have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric. You also have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
+        )
+      )
+    } else if (check_names == FALSE & check_log == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm). You also have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
+        )
+      )
+    } else if (check_log == FALSE & check_numeric == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "You have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric. You also have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
+        )
+      )
+    } else if (check_names == FALSE & check_numeric == FALSE){
       showModal(
         modalDialog(
           title = "ERROR",
@@ -668,6 +723,14 @@ server <- function(input, output, session) {
           "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm)."
         )
       )
+    } else if(check_log == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "You have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
+        )
+      )
     } else if(check_numeric == FALSE){
       showModal(
         modalDialog(
@@ -679,7 +742,8 @@ server <- function(input, output, session) {
     } else if(check_numeric & check_names) {
       # maybe I should put another notification saying the file looks good
       showNotification("File Received and Processed",
-                       type = "message")
+                       type = "message",
+                       duration = 1)
 
       output$rider_data_next_placeholder <- renderUI({
         input_task_button("rider_data_next", "Continue")
@@ -841,6 +905,19 @@ server <- function(input, output, session) {
     req(input$upload_routes) # Ensure a file is uploaded
     routes <- input$upload_routes$datapath
 
+    is_zip <- grepl("\\.zip$", tolower(routes))
+
+    if (is_zip == FALSE){
+      showModal(
+        modalDialog(
+          title = "ERROR",
+          easy_close = TRUE,
+          "File must be a GTFS zip file (.zip)"
+        )
+      )
+      return(NULL)
+    }
+
     tryCatch(
       {
         get_gtfs_routes(routes)
@@ -964,7 +1041,8 @@ server <- function(input, output, session) {
                                 easy_close = TRUE,
                                 "Unable to retrieve census data.
                                 If you are offline or there is a government shutdown, the data is unable to be accessed.
-                                If you have good internet connection and www.census.gov seems to be working properly,
+                                If your computer has no storage space on its hard drive, this could also be the problem.
+                                If you have good internet connection and storage, and if www.census.gov seems to be working properly,
                                 you might find success by simply trying this function again."
                               )
                             )
@@ -999,12 +1077,14 @@ server <- function(input, output, session) {
                           organized_acs <- combine_acs_data(pulled_acs)
 
                           incProgress(0.20, detail = "Preparing data for model")
-                          create_final_acs_data(
+                          acs_data <- create_final_acs_data(
                             combined_acs_data   = organized_acs,
                             intersecting_tracts = tract_buffer_data,
                             start_month         = month_start,
                             end_month           = month_end
                           )
+
+                          acs_data
                         })
 
     acs_data(res)  # store result so outputs can use it
@@ -1039,13 +1119,14 @@ server <- function(input, output, session) {
                   "[Bus Rapid Transit]" = "brt",
                   "[Adult Base Fare]" = "log_fare",
              addnl_vars())
+    fare_tbl <- fare_tbl()
 
 
     create_regression_model(data_xlsx = xl_data,
                             acs_data = acs,
                             gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
                             variables = vars,
-                            fare_df = fare_tbl()) # TODO: this doesn't seem to be working
+                            fare_df = fare_tbl) # TODO: this doesn't seem to be working
   })
 
   output$tbl_mod_stepwise <- renderDT({
@@ -1414,7 +1495,7 @@ server <- function(input, output, session) {
           label = "Date of change",
           value = Sys.Date(),
           min = Sys.Date() - 10000,
-          max = Sys.Date(),
+          max = Sys.Date() + 10000,
           width = "150px")
       })
 
@@ -1744,7 +1825,7 @@ server <- function(input, output, session) {
 
 
 
-  ## RUNNING FORECASTS ##
+  #### RUNNING FORECASTS ####
 
   forecast_df <- eventReactive(input$buttonRun, {
 
@@ -1754,6 +1835,29 @@ server <- function(input, output, session) {
     req(saved$by_route)
 
     saved_predictions <- saved$by_route
+
+    # TODO: Delete code below
+    # this is me manually creating the saved predictions to test things.
+
+    # saved_predictions <- expand.grid("Route" = routes,
+    #   "Variable" = names(elasticities),
+    #                           "Low.Estimate" = "-1",
+    #                           "Mid.Estimate" = "2%",
+    #                           "High.Estimate" = "5%")
+    #
+    # saved_predictions$Route <- as.character(saved_predictions$Route)
+    # saved_predictions$Variable <- as.character(saved_predictions$Variable)
+    # saved_predictions$Low.Estimate <- as.character(saved_predictions$Low.Estimate)
+    # saved_predictions$Mid.Estimate <- as.character(saved_predictions$Mid.Estimate)
+    # saved_predictions$High.Estimate <- as.character(saved_predictions$High.Estimate)
+    #
+    # which(saved_predictions$Route == 9)
+    # saved_predictions[1,"Low.Estimate"] <- -10
+    # saved_predictions[28,"Low.Estimate"] <- -5
+    # saved_predictions[55,"Low.Estimate"] <- -3
+
+
+    # TODO: Delete code above ^
 
     routes <- routes()
 
@@ -1777,7 +1881,7 @@ server <- function(input, output, session) {
       left_join(grouped_routes, by = join_by(Route))
 
 
-    if (length(unique(saved_predictions$Route)) == length(routes)){
+    if (length(unique(saved_predictions$Route)) == length(routes)){ # TODO: I think I should make it so that it will work even if they don't make a prediction for all the routes
       forecast_dfs <- list()
       for (group_id in unique(grouped_predictions$route_group_id)){
         filtered_grouped_predictions <- grouped_predictions |>

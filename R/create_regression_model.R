@@ -104,43 +104,23 @@ create_regression_model_forced <- function(data_xlsx,
   return(lm_vrm)
 }
 
-# og_model <- read_excel("../data/MARTA Data/comparing models.xlsx",2)
 #
-# marta_data <- read_excel("../data/MARTA Data/Bus Data Filtered.xlsx", 1)
-#
-# marta_data_filter <- marta_data |>
-#   mutate(date = ym(paste0(Year,"-",Month))) |>
-#   filter(date < ym("2021-10"),
-#          date >= ym("2013-01")) |>
-#   filter(!is.na(date))
-#
-# marta_data_filter$Month <- relevel(factor(marta_data_filter$Month), ref = "12")
-#
-# # # What if we just make the log zero if the actual is zero
-# # marta_data_filter <- marta_data_filter |>
-# #   mutate(log_UPT = ifelse(UPT == 0, 0,log_UPT),
-# #          log_VRM = ifelse(VRM == 0, 0,log_VRM))
-#
-# formula <- as.formula("log_UPT ~ log_VRM + log_Gas_price + log_Mean_Vacant_Percent + log_num_0_veh + Month | Route")
-#
-# marta_model <- feols(formula, data=marta_data_filter, cluster= ~Route)
+# marta_mod <- create_regression_model_forced(data_xlsx = xl_data,
+#                         acs_data = acs,
+#                         gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
+#                         variables = vars_forced,
+#                         fare_df = fare_tbl)
+# summary(marta_mod)
 #
 #
-# model_df <- data.frame(var = names(coef(marta_model)), coef_new = round(coef(marta_model),3))
+# data_xlsx <- read_excel("../data/MARTA Data/past marta models/bus_data_v5_editted.xlsx")
+# test_data <- read_excel("../data/MARTA Data/past marta models/bus_data_v5_for_testing_app.xlsx")
 #
-# og_model |>
-#   left_join(model_df, by = "var") |>
-#   mutate(diff = round(coef_new - coef, 3)) |>
-#   gt()
+# df_all_log$log_Vacant_Percent_mean_100 - test_data$log_Vacant_Percent_mean_100
 #
-# # Count rows with missing values in your model variables
-# vars <- c("log_UPT", "log_VRM", "log_Gas_price", "log_Mean_Vacant_Percent","log_num_0_veh","Month")
-# sum(!complete.cases(marta_data_filter[, vars]))
-#
-# excluded_data <- marta_data_filter[!complete.cases(marta_data_filter[, vars]),]
-#
-# marta_data_filter |>
-#   filter(!is.na(Month)) |>
-#   nrow()
+# exp(df_all_log$log_upt_avg)
+# exp(test_data$log_UPT)
+
+
 
 

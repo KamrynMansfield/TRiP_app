@@ -1,8 +1,8 @@
 # coefs <- final_coefs
-# data_xlsx <- "data/data_example.xlsx"
+# data_xlsx <- vrm_data
 # acs_data <- acs
 # gas_csv <- "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv"
-# scenario_inputs_df <- elast_table
+# scenario_inputs_df <- scenario_df
 # start_year <- NULL
 # start_month <- NULL
 
@@ -97,7 +97,7 @@ forecast_ridership <- function(coefs,
     mutate(month_change = change / 12)
 
 
-  # Create forecast grid until December 2026
+  # Create forecast grid until December of the next year
   forecast_grid <- expand_grid(
     route_id = unique(route_reference$route_id),
     year = c(ref_year, ref_year + 1),
@@ -146,7 +146,7 @@ forecast_ridership <- function(coefs,
       elasticity = recode(variable, !!!elasticities),
       elasticity_factor = (1 + total_month_change)**elasticity
     ) |>
-    select(!elasticity) |>
+    select(!c("change", "month_change", "total_month_change", "elasticity")) |>
     # make each variable factor it's own row
     pivot_wider(names_from = "variable",
                 values_from = "elasticity_factor",

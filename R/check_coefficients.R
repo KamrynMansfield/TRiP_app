@@ -39,14 +39,15 @@ check_coefficients <- function(model, extra_vars){
 
 
   # this df will be used later to check the signs
-  # I and add more to this list as time goes on
+  # I can add more to this list as time goes on
   sign_df <- matrix(c("log_vrm", "positive", "error", "The VRM coefficient must be positive.",
                       "log_gas_price", "positive", "warning", "Positive sign expected, use best judgement",
                       "log_perc_hshlds_noveh", "positive", "warning", "Positive sign expected, use best judgement",
                       "log_perc_car", "positive", "warning", "Positive sign expected, use best judgement",
                       "log_perc_wfh", "positive", "warning", "Positive sign expected, use best judgement",
                       "brtTRUE",  "positive", "warning", "Because so few routes are BRT, this may not be as statistically significant as the p-value lets on. Use best judgement",
-                      "brtTRUE",  "negative", "warning", "Because so few routes are BRT, this may not be as statistically significant as the p-value lets on. Use best judgement"),
+                      "brtTRUE",  "negative", "warning", "Because so few routes are BRT, this may not be as statistically significant as the p-value lets on. Use best judgement",
+                      "log_fare", "negative", "warning", "Negative sign expected, use best judgement"),
                     byrow = T, ncol = 4) |>
     as.data.frame()
 
@@ -56,7 +57,7 @@ check_coefficients <- function(model, extra_vars){
 
 
   coefs <- coef(model)
-  # coefs <- c(coefs, log_perc_car = -.45, log_vrm = -.5) # This is just to check my code
+  # coefs <- c(log_perc_car = -.45, log_vrm = -.5) # This is just to check my code
 
   coef_df <- data.frame(variable = names(coefs),
                         coeff = round(coefs,3)) |>
