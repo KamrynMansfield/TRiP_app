@@ -10,8 +10,8 @@ id = "019f7142-d057-c4b5-68a3-3421b30aab9e"
 dashboard_url = "https://connect.posit.cloud/kamrynmansfield/content/019f7142-d057-c4b5-68a3-3421b30aab9e"
 direct_url = "https://019f7142-d057-c4b5-68a3-3421b30aab9e.share.connect.posit.cloud"
 logs_url = "https://connect.posit.cloud/kamrynmansfield/content/019f7142-d057-c4b5-68a3-3421b30aab9e/history"
-deployed_at = "2026-07-17T21:51:32.957Z"
-bundle_id = "019f720f-148a-3a1b-8857-d805955729b4"
+deployed_at = "2026-08-12T04:00:29.187Z"
+bundle_id = "019ff41f-bf69-20ee-aaa1-adba57f5631b"
 files = [
     ".posit/publish/TRiP_app-P3JT.toml",
     ".posit/publish/deployments/deployment-83J6.toml",
@@ -37,7 +37,6 @@ files = [
     "app.R",
     "data/ACS_monthly_Nashville_2021_2025.rds",
     "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
-    "data/data_example.xlsx",
     "data/state_planes_crs.rda",
     "data/us_counties.rds",
     "data/~$data_example.xlsx",

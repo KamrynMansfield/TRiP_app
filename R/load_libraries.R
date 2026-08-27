@@ -21,7 +21,8 @@ pacman::p_load(tidyverse,
                tigris,
                lubridate,
                zoo,
-               shinyjs)
+               shinyjs,
+               pak)
 
 
 # in case I want to source all my functions.

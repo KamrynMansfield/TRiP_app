@@ -82,7 +82,7 @@ check_coefficients <- function(model, extra_vars){
 
   coef_df |>
     gt() |>
-    # Color rows green where sign_check is warning
+    # Color rows yellow where sign_check is warning
     tab_style(
       style = cell_fill(color = "yellow"),
       locations = cells_body(rows = sign_check == "warning")

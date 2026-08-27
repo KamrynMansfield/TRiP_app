@@ -1,18 +1,21 @@
-library(shiny)
-library(bslib)
+# install.packages("devtools")
+# pak::pak("rstudio/gridlayout")
 library(gridlayout)
-library(DT)
+
+# Load the shiny package. The rest of the required packages are loaded in the file load_libraries.R
+pacman::p_load(shiny)
 
 options(shiny.maxRequestSize = 30 * 1024^2, # 30 MB
         shiny.reactlog = TRUE)
 
 
-key <- Sys.getenv("CENSUS_API_KEY")
-if (nzchar(key)) {
-  census_api_key(key, install = FALSE, overwrite = TRUE)
-} else {
-  stop("CENSUS_API_KEY not set in the environment.")
-}
+# TODO: delete this before deploying
+# key <- "586e805d2349e1bfa31993184dab146a53ba66dd"
+# if (nzchar(key)) {
+#   census_api_key(key, install = FALSE, overwrite = TRUE)
+# } else {
+#   stop("CENSUS_API_KEY not set in the environment.")
+# }
 
 
 #### UI ####
@@ -21,81 +24,68 @@ ui <- page_navbar(
   title = "TRiP App",
   selected = "pan_1",
   theme = bslib::bs_theme(),
+
+  tags$head(
+    tags$style(HTML("\
+      .screening-warning { border: 1px solid #e5b94f; border-radius: 6px; overflow: hidden; }\
+      .screening-warning-header { background: #ffc107; color: #212529; font-weight: 700; padding: 10px 14px; }\
+      .screening-warning-body { background: #fff8df; color: #212529; padding: 12px 14px; }\
+      .screening-warning-body ul { margin: 0; padding-left: 20px; }\
+    "))
+  ),
+
 ##### 1. screening #####
-  nav_panel(
-    value = "pan_1",
-    title = "1. Screening",
-    grid_container(
-      layout = c(
-        "area0 area1",
-        "area0 area1"
+nav_panel(
+  value = "pan_1",
+  title = "1. Screening",
+  grid_container(
+    layout = c("area0 area1", "area0 area1"),
+    row_sizes = c("1fr", "1fr"),
+    col_sizes = c("1fr", "1fr"),
+    gap_size = "10px",
+
+    grid_card(
+      area = "area0",
+      card_header(
+        markdown(mds = c(
+          "The **TRiP App** was created to help small- to medium-sized transit agencies create short-term forecasts to help with their yearly budgets.",
+          "<br>",
+          "<br>",
+          "Please answer the following questions to see if this app is for your agency."
+        ))
       ),
-      row_sizes = c(
-        "1fr",
-        "1fr"
-      ),
-      col_sizes = c(
-        "1fr",
-        "1fr"
-      ),
-      gap_size = "10px",
-      grid_card(
-        area = "area0",
-        card_header(
-          markdown(
-            mds = c(
-              "The **TRiP App** was created to help small- to medium-sized transit agencies create short-term forecasts to help with their yearly budgets. ",
-              "<br>",
-              "<br>",
-              "Please answer the following questions to see if this app is for your agency. "
-            )
-          )
+      card_body(
+        radioButtons(
+          "qRedesign",
+          "Has your agency had a system redesign within the last three years?",
+          choices = c("Yes" = "yes", "No" = "no"),
+          width = "100%"
         ),
-        card_body(
-          radioButtons(
-            inputId = "qRedesign",
-            label = "Has your agency had a system redesign within the last three years?",
-            choices = list(
-              "Yes" = "Warning: Because your agency has implemented a system redesign within the last three years, historic route ridership data may not accurately reflect current or future service patterns. As a result, this tool may not provide reliable ridership forecasts for your system.",
-              "No" = ""
-            ),
-            width = "100%",
-            selected = ""
-          ),
-          radioButtons(
-            inputId = "qUniversity",
-            label = "Is a majority of your system ridership from a university or a single employer?",
-            choices = list(
-              "Yes" = "Warning: Systems with ridership primarily tied to a university or single employer often exhibit unique travel patterns compared to typical community-based bus transit systems. These travel patterns are outside of the assumptions of this tool.",
-              "No" = ""
-            ),
-            width = "100%",
-            selected = ""
-          ),
-          radioButtons(
-            inputId = "qRail",
-            label = "Does your city have light- or heavy-rail transit? If so, have there been any major rail transit investments in the last three years?",
-            choices = list(
-              "Yes" = "Warning: This tool is meant for cities and demographics that are served primarily by bus.",
-              "No" = ""
-            ),
-            width = "100%",
-            selected = ""
-          ),
-          actionButton("compatibility_button", "Check Compatibility", class = "btn-primary")
+        radioButtons(
+          "qUniversity",
+          "Is a majority of your system ridership from a university or a single employer?",
+          choices = c("Yes" = "yes", "No" = "no"),
+          width = "100%"
         ),
-        card_header(),
-        card_body()
-      ),
-      grid_card(
-        area = "area1",
-        card_body(
-          textOutput(outputId = "textWarn1"),
-          uiOutput(outputId = "screening_button_placeholder")
-        )
+        radioButtons(
+          "qRail",
+          "Does your city have light- or heavy-rail transit? If so, have there been any major rail transit investments in the last three years?",
+          choices = c("Yes" = "yes", "No" = "no"),
+          width = "100%"
+        ),
+        actionButton("compatibility_button", "Check Compatibility", class = "btn-primary")
+      )
+    ),
+
+    grid_card(
+      area = "area1",
+      card_body(
+        uiOutput("textWarn1"),
+        uiOutput("screening_button_placeholder")
       )
     )
-  ),
+  )
+),
 ##### 2. rider data #####
   nav_panel(
     value = "pan_2",
@@ -117,6 +107,19 @@ ui <- page_navbar(
       grid_card(
         area = "vrm",
         card_body(
+          div(
+            style = "height: 375px; overflow-y: auto; width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid #cccccc; border-radius: 4px; padding: 10px;",
+            strong("Imported File Preview"),
+            DTOutput(outputId = "input_data", width = "98%")
+          ),
+          "Just a few more questions before creating your model for forecasting.",
+          radioButtons(
+            inputId = "has_fare_changes",
+            label = "Have you changed your adult base fare in the past 5 years?",
+            choices = c("No" = "no", "Yes" = "yes"),
+            selected = "no",
+            inline = TRUE
+          ),
           conditionalPanel(
                     condition = "input.has_fare_changes === 'yes'",
                     h5("Inputing Changes to Adult Base Fare"),
@@ -162,20 +165,12 @@ ui <- page_navbar(
           "The values in the route_id column must match the route id in the GTFS files.",
           "If you have you own variables you would also like to model, you may add columns that contain positive integers. The model
           will take the natural logarithm of any added variables, so, if you add any variables,
-          just list actual values and avoid putting 'log' in the column name.",
-          hr(),
-          "Just a few more questions before creating your model for forecasting.",
-          radioButtons(
-            inputId = "has_fare_changes",
-            label = "Have you changed your adult base fare in the past 5 years?",
-            choices = c("No" = "no", "Yes" = "yes"),
-            selected = "no",
-            inline = TRUE
-          )
+          just list actual values and avoid putting 'log' in the column name."
         )
       )
     )
   ),
+
 ##### 3. gtfs #####
   nav_panel(
     value = "pan_3",
@@ -218,68 +213,93 @@ ui <- page_navbar(
       full_screen = TRUE,
       card_body(
         grid_container(
+
+
           layout = c(
-            "area1 area0",
-            "area2 area3"
+            "desc       model1 model2",
+            "create_mod model1 model2",
+            "create_mod model1 model2"
           ),
           row_sizes = c(
-            "0.86fr",
-            "1.14fr"
+            "1.66fr",
+            "0.67fr",
+            "0.67fr"
           ),
           col_sizes = c(
+            "550px",
             "1fr",
             "1fr"
           ),
-          gap_size = "10px",
+          gap_size = "1rem",
           grid_card(
-            area = "area0",
-            card_header(
-              "On this side, you can force any of the variables to be in the model.
-              Once you have the model that you think is best, you may choose which model you want to continue with."
-            ),
-            selectizeInput(inputId = "variables_forced",
-                           label = "Adding Variables (optional)",
-                           choices = NULL,
-                           selected = NULL,
-                           multiple = TRUE,
-                           width = "100%"
-            ),
-            input_task_button("run_model_forced", "Create Model with Forced Variables")
-          ),
-          grid_card(
-            area = "area1",
-            card_header(
-              "Once your data is loaded, you will see the coefficients and
-              p-values of the model that was created using a backwards stepwise method.
-              You can see how the model changes by deleting variables and rerunning the stepwise regression"
-            ),
+            style = "background-color: #f0f0f0;",
+            area = "desc",
             card_body(
-              selectizeInput(
-                inputId = "variables",
-                label = "Variable Selection",
-                choices = NULL,
-                selected = NULL,
-                multiple = TRUE,
-                width = "100%"
-              ),
+              markdown("
+              *Once all data is uploaded, this tab helps you create the linear regression
+              model that will forecast your ridership.*
 
-              input_task_button("run_model_stepwise", "Redo Stepwise Regression")
+              **Select Variables:** The selection pane below contains every variable that is
+              available to add to the model. The pre-selected varaibles
+              are those belonging to the standard model the app already made (displayed in the left table).
+              In the selection pane, you may add or delete variables in order to get the ones you want to see in a model.
+
+              **Run Model:** Create a model using one of two methods.
+
+              - *Stepwise:* A backwards stepwise method which will get rid of any
+              coefficients that don't meet a significance threshold.
+
+              - *Forced:* Keeping every selected variable in the model regardles of statistical significance.
+
+              **Choose Model:** You may continue with the model you have created,
+              or you may choose to continue with the model that was created by the app.
+
+              **Required Variables:** VRM, Month, and Year are require to be selected.
+
+              **Notes:** For the stepwise method, the app is programed
+              to create a large model using every varaible.
+              It then iteratively removes the variables with the highest p-values
+              until they all fall within a 10% confidence threshold of
+                       "
+              )
             )
           ),
           grid_card(
-            area = "area2",
+            # style = "background-color: #f0f0f0;",
+            area = "create_mod",
             card_body(
-              input_task_button("use_this_model_button", "Continue With This Model"),
-              DTOutput(outputId = "tbl_mod_stepwise")
+              selectizeInput(inputId = "variables_forced",
+                             label = "Varaible Selection",
+                             choices = NULL,
+                             selected = NULL,
+                             multiple = TRUE,
+                             width = "100%"
+              ),
+              div(
+                style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+                input_task_button("run_model_stepwise", "Create Model (Stepwise)"),
+                input_task_button("run_model_forced", "Create Model (Forced)")
+              )
             )
           ),
           grid_card(
-            area = "area3",
+            area = "model2",
+            card_header("Alternative Model Results"),
             card_body(
               input_task_button("use_this_model_button_forced", "Continue With This Model"),
-              DTOutput(outputId = "tbl_mod_forced")
+              gt_output(outputId = "tbl_mod_forced")
+            )
+          ),
+          grid_card(
+            area = "model1",
+            card_header("Standard Model Results"),
+            card_body(
+              input_task_button("use_this_model_button", "Continue With This Model"),
+              gt_output(outputId = "tbl_mod_stepwise")
             )
           )
+
+
         )
       )
     )
@@ -290,8 +310,8 @@ ui <- page_navbar(
     title = "5. Model Review",
     grid_container(
       layout = c(
-        "area0 area1",
-        "area0 area1"
+        "area0 area1 area2",
+        "area0 area1 area2"
       ),
       row_sizes = c(
         "1fr",
@@ -299,19 +319,88 @@ ui <- page_navbar(
       ),
       col_sizes = c(
         "1fr",
+        "1fr",
         "1fr"
       ),
       gap_size = "10px",
       grid_card(
         area = "area0",
         card_body(
-          "Let's review the model you have selected. ",
+          strong("Selected model"),
           gt_output("coefficients_review")
         ),
         card_body()
       ),
       grid_card(
         area = "area1",
+        card_body(
+          strong("Pre-forecasting questions"),
+          radioButtons(
+                    inputId = "brt_question",
+                    label = "In the next year, do you plan to convert any of your routes to BRT?",
+                    choices = list("No" = "no","Yes" = "yes"),
+                    selected = "no",
+                    inline = TRUE
+                  ),
+          radioButtons(
+            inputId = "fare_question",
+            label = "In the next year, do you plan to increase the adult base fare?",
+            choices = list("No" = "no","Yes" = "yes"),
+            selected = "no",
+            inline = TRUE
+          ),
+          # uiOutput(outputId = "brt_question_placeholder"),
+          conditionalPanel(
+            condition = "input.brt_question === 'yes'",
+            hr(),
+            strong("Input BRT Changes"),
+            "Please select the route and the approximate date that it will be converted to BRT",
+            div(
+              style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+              uiOutput(outputId = "brt_date"),
+              uiOutput(outputId = "brt_routes"),
+              div(
+                style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+                actionButton("add_brt", "Submit BRT change", class = "btn-primary"),
+                "You may select a row from the table below if you want to delete it.",
+                actionButton("delete_brt", "Delete selected row in BRT table", class = "btn-danger")
+              )
+            )
+          ),
+          conditionalPanel(
+            condition = "input.brt_question === 'yes'",
+            DTOutput("tbl_brt")
+          ),
+          conditionalPanel(
+            condition = "input.fare_question === 'yes'",
+            hr(),
+            strong("Input Changes to Adult Base Fare"),
+            div(
+              style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+              dateInput("new_date", "Date of change", width = "150px",
+                        value = Sys.Date(),
+                        min = Sys.Date(),
+                        max = Sys.Date() + 10000),
+              numericInput("new_prev", "Current fare", value = NA, min = 0, step = 0.25, width = "150px"),
+              numericInput("new_new", "New fare", value = NA, min = 0, step = 0.25, width = "150px")
+            ),
+            div(
+              style = "display:flex; gap:.5rem; flex-wrap:wrap;",
+              actionButton("add_fare_chagne", "Submit fare increase", class = "btn-primary"),
+              "You may select a row from the table below if you want to delete it.",
+              actionButton("delete_fare_change", "Delete selected row in fare table", class = "btn-danger")
+            )
+          ),
+          conditionalPanel(
+            condition = "input.fare_question === 'yes'",
+            DTOutput("tbl_fare_change")
+          )
+        ),
+        card_body(),
+        card_body()
+      ),
+      grid_card(
+        area = "area2",
         card_body(
           "Research has cited the following elasticities for select coefficients. If you would prefer to replace or add these coefficients to your model, you can check the corresponding boxes.",
           checkboxGroupInput(
@@ -324,27 +413,7 @@ ui <- page_navbar(
               "BRT (-0.3) ** only add if you have current BRT routes or if you plan to convert a route to BRT" = "brt"
             )
           ),
-          uiOutput(outputId = "brt_question_placeholder"),
-          conditionalPanel(
-            condition = "input.brt_question === 'yes'",
-            h5("Inputing BRT Changes"),
-            "Please select the route and the approximamte date that it will be converted to BRT",
-            div(
-              style = "display:flex; gap:.5rem; flex-wrap:wrap;",
-              uiOutput(outputId = "brt_date"),
-              uiOutput(outputId = "brt_routes"),
-              div(
-                style = "display:flex; gap:.5rem; flex-wrap:wrap;",
-                actionButton("add_brt", "Submit BRT change", class = "btn-primary"),
-                actionButton("delete_brt", "Delete selected BRT row", class = "btn-danger")
-              )
-            )
-          ),
-          conditionalPanel(
-            condition = "input.brt_question === 'yes'",
-            DTOutput("tbl_brt")
-          ),
-          "If you have reviewed the coefficients, added any forced coefficients you wanted, and decided this is the model you want to use, please click the button below.",
+          "If you have reviewed the coefficients, added any forced coefficients you wanted, and decided this is the model you want to use, click the button below.",
           actionButton(
             inputId = "proceed_to_forecast",
             label = "Proceed to Forecasting",
@@ -362,12 +431,12 @@ ui <- page_navbar(
     title = "6. Forecasting Inputs",
     grid_container(
       layout = c(
-        "area0 area1",
+        "instr area1",
         "area0 area1"
       ),
       row_sizes = c(
-        "1fr",
-        "1fr"
+        ".6fr",
+        "1.4fr"
       ),
       col_sizes = c(
         "1fr",
@@ -375,15 +444,46 @@ ui <- page_navbar(
       ),
       gap_size = "10px",
       grid_card(
+        style = "background-color: #f0f0f0;",
+        area = "instr",
+        card_body(
+          markdown("
+          **Scenario Estimation:** Estimate three scenarios based on
+          realistic assumptions of the direction of each variable (growth/decline)
+          and the magnitude of the expected annual percent change in each variable.
+          For example...
+
+          - *Low Estimate* might represent a scenario with small decreases in VRM and other variables.
+
+          - *Mid Estimate* might represent a status quo scenario with no changes in VRM and minimal changes in other variables.
+
+          - *High Estimate* might represent a large increase in VRM and changes in other variables.
+
+          In many cases, the same set of scenarios will apply to all the routes, but there are
+          some cases where individual routes will have different scenarios
+          (e.g. you know one route will double it's service but the rest will stay the same).
+
+          In the case where all your routes have the same scenarios, you can select *All remaining routes* and click save.
+          This will save the same scenario estimates for each route.
+
+          If some of your routes will have different scenarios, it is easiest to make those estimates first,
+          save those routes, and then make the scenario estimates that will apply to *All remaining routes*.
+
+          **Existing Routes Overwrite:** You may overwrite any of the saved routes if you need to make adjustments.
+          Note that some users first create general scenarios and apply it to each route.
+          Then they go back and overwrite the few routes that have different estiamtes.
+                   ")
+        )
+      ),
+      grid_card(
         area = "area0",
         card_body(
-          "The table below has been populated with the variables that you must predict to run the forecasts. Double click in each cell to replace it with your prediction.",
           # DTOutput(outputId = "dtScenarios", width = "100%"),
           radioButtons(
             "route_mode",
             "Apply scenario to:",
             choices = c("New routes (not yet saved)" = "new",
-                        "Overwrite existing routes" = "overwrite"),
+                        "Existing routes (overwrite saved routes)" = "overwrite"),
             selected = "new",
             inline = TRUE
           ),
@@ -399,6 +499,8 @@ ui <- page_navbar(
         area = "area1",
         card_body(
           input_task_button("buttonRun","Run Forecasts"),
+          "The assumed forecasts for each route will be displayed below.
+          Check your estimate values once more before proceeding ",
           # plotOutput(outputId = "forcast_plot"),
           # Optional: show saved results
           DTOutput("dtSavedScenarios")
@@ -420,18 +522,21 @@ ui <- page_navbar(
         "1fr"
       ),
       col_sizes = c(
-        "0.3fr",
-        "1.7fr"
+        "0.5fr",
+        "1.5fr"
       ),
       gap_size = "10px",
       grid_card(
         area = "area0",
         card_body(
+          style = "display: flex; flex-direction: column; height: 100%;",
           selectInput(
             inputId = "input_route_to_plot",
             label = "Choose a route to plot",
             choices = "Waiting for forecast..."
-          )
+          ),
+          downloadButton("download_plots", "Download Plots (.zip)", class = "btn-success"),
+          input_task_button("go_to_export", "Export Forecast Data",style = "margin-top: auto;")
         )
       ),
       grid_card(area = "area1",
@@ -447,11 +552,11 @@ ui <- page_navbar(
     grid_container(
       layout = c(
         "area1 area0",
-        "area1 area0"
+        "desc area0"
       ),
       row_sizes = c(
-        "1fr",
-        "1fr"
+        ".8fr",
+        "1.2fr"
       ),
       col_sizes = c(
         "1fr",
@@ -461,16 +566,43 @@ ui <- page_navbar(
       grid_card(
         area = "area0",
         card_body(
+          strong("Raw Forecast Data"),
           DTOutput(outputId = "outputExample", width = "100%")
         )
       ),
       grid_card(
         area = "area1",
-        card_header("Download Output"),
         card_body(
-          "Select the format you want the downloaded output to be in.",
+          "You can download the raw forecast data as either an Excel or a CSV file.
+          (See a description of each of the varaibles below.)",
           downloadButton("download_csv", "Download as CSV"),
           downloadButton("download_xlsx", "Download as Excel")
+        )
+      ),
+      grid_card(
+        style = "background-color: #f0f0f0;",
+        area = "desc",
+        card_body(
+          h5("Data Description"),
+          markdown("
+                   **route_id** = Route ID
+
+                   **year** = Year
+
+                   **month** = Month
+
+                   **avg_daily_upt** = Average Weekday Unlinked Passenger Trips (UPT)
+
+                   **tot_weekday_upt** = Average Weekday UPT multiplied by total weekdays in the month.
+
+                   **forecast** = True/False indicating whether the value was forecasted or not.
+
+                   **scenario** = The name of the scenario that the forecasted value belongs to. If it is not a forecasted value, it will be labeled *observed*.
+
+                   **date** = Combined month and year in a date format for easier plotting.
+
+
+                   ")
         )
       )
     )
@@ -482,90 +614,71 @@ server <- function(input, output, session) {
 
 #### 1. SCREENING ####
 
-  observe({
+  screening_result <- reactive({
+    warnings <- c(
+      redesign = "Because your agency has implemented a system redesign within the last three years,
+            historic route ridership data may not accurately reflect current or future service patterns.
+            As a result, this tool may not provide reliable ridership forecasts for your system.",
+      university = "Because most of your system ridership comes from a university or a single employer,
+            the variables used in this app may not be the largest predictors of ridership,
+            and, therefore, the app's predictions may not be accurate.
+            Note that if you have your own data to capture these unique circumstances,
+            there is an option to add those to the model.",
+      rail = "This tool is intended for cities and demographics served primarily by bus. If there have been no recent investments in rail transit, you might be able to use this app if you exclude non-bus routes."
+    )
 
-    if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
-      text_output <- paste("This app might be useful to your agency :)")
-    } else if (input$qRedesign == "" & input$qUniversity == ""){
-      text_output <- paste("Because this app was created to work with bus networks,
-            this app may not meet your needs.
-            If there have been no recent investments in rail transit,
-            you might be able to use this app if you exclude non-bus routes.")
-    } else if (input$qRedesign == "" & input$qRail == ""){
-      text_output <- paste("Since most of your system ridership comes from a university or a single employer,
-            the variables used in this app may not be the largest predictors of ridership,
-            and, therefore, the app's predictions may not be accurate.
-            Note that if you have your own data to capture these unique circumstances,
-            there is an option to add those to the model.")
-    } else if (input$qRail == "" & input$qUniversity == ""){
-      text_output <- paste("Because your agency has implemented a system redesign within the last three years,
-            historic route ridership data may not accurately reflect current or future service patterns.
-            As a result, this tool may not provide reliable ridership forecasts for your system.")
-    } else if (input$qRail == ""){
-      text_output <- paste("Because your agency has implemented a system redesign within the last three years,
-            historic route ridership data may not accurately reflect current or future service patterns.
-            As a result, this tool may not provide reliable ridership forecasts for your system.
-            Additionally, since most of your system ridership comes from a university or a single employer,
-            the variables used in this app may not be the largest predictors of ridership,
-            and, therefore, the app's predictions may not be accurate.
-            Note that if you have your own data to capture these unique circumstances,
-            there is an option to add those to the model.")
-    } else if (input$qRedesign == ""){
-      text_output <- paste("Since most of your system ridership comes from a university or a single employer,
-            the variables used in this app may not be the largest predictors of ridership,
-            and, therefore, the app's predictions may not be accurate.
-            Note that if you have your own data to capture these unique circumstances,
-            there is an option to add those to the model.
-            Additionally, because this app was created to work with bus networks,
-            this app may not meet your needs.
-            If there have been no recent investments in rail transit,
-            you might be able to use this app if you exclude non-bus routes.")
-    } else if (input$qUniversity == ""){
-      text_output <- paste("Because your agency has implemented a system redesign within the last three years,
-            historic route ridership data may not accurately reflect current or future service patterns.
-            As a result, this tool may not provide reliable ridership forecasts for your system.
-            Additionally, because this app was created to work with bus networks,
-            this app may not meet your needs.
-            If there have been no recent investments in rail transit,
-            you might be able to use this app if you exclude non-bus routes.")
+    selected_warnings <- warnings[c(
+      input$qRedesign == "yes",
+      input$qUniversity == "yes",
+      input$qRail == "yes"
+    )]
 
-    } else{
-      text_output <- paste("There are a few reasons why this app may not meet your needs.
-      (1) Because your agency has implemented a system redesign within the last three years,
-            historic route ridership data may not accurately reflect current or future service patterns.
-            As a result, this tool may not provide reliable ridership forecasts for your system.
-            (2) Since most of your system ridership comes from a university or a single employer,
-            the variables used in this app may not be the largest predictors of ridership,
-            and, therefore, the app's predictions may not be accurate.
-            Note that if you have your own data to capture these unique circumstances,
-            there is an option to add those to the model.
-            (3) Because this app was created to work with bus networks,
-            this app may not meet your needs.
-            If there have been no recent investments in rail transit,
-            you might be able to use this app if you exclude non-bus routes.")
+    list(has_warnings = length(selected_warnings) > 0, warnings = unname(selected_warnings))
+  })
 
+  output$textWarn1 <- renderUI({
+    result <- screening_result()
+
+    if (!result$has_warnings) {
+      return(tags$div(
+        class = "alert alert-success",
+        "Your responses are compatible with the intended use of this tool."
+      ))
     }
 
-
-    output$textWarn1 <- renderText(text_output)
-
-    if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
-      output$screening_button_placeholder <- renderUI({
-        input_task_button("screening_button", "Continue")
-      })
-    } else{
-      output$screening_button_placeholder <- renderUI({
-        input_task_button("screening_button", "Continue Anyways")
-      })
-    }
-
+    tags$div(
+      class = "screening-warning",
+      tags$div(class = "screening-warning-header", "Warning"),
+      tags$div(
+        class = "screening-warning-body",
+        tags$p("One or more responses may affect the reliability of this tool:"),
+        tags$ul(lapply(result$warnings, tags$li))
+      )
+    )
   }) |>
-    bindEvent(input$compatibility_button)
+    bindEvent(input$compatibility_button, ignoreInit = TRUE)
 
-  observe({
+  output$screening_button_placeholder <- renderUI({
+    if (screening_result()$has_warnings) {
+      bslib::input_task_button(
+        "screening_button",
+        "Continue Anyways",
+        class = "btn-warning"
+      )
+    } else {
+      bslib::input_task_button(
+        "screening_button",
+        "Continue",
+        class = "btn-primary"
+      )
+    }
+  }) |>
+    bindEvent(input$compatibility_button, ignoreInit = TRUE)
+
+  observeEvent(input$screening_button, {
     bslib::nav_select("main_nav", "pan_2")
-  }) |>
-    bindEvent(input$screening_button)
+  })
+
 
   # output$textWarn1 <- renderText({
   #   if (input$qRedesign == "" & input$qUniversity == "" & input$qRail == ""){
@@ -691,6 +804,9 @@ server <- function(input, output, session) {
           "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm). You also have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric. You also have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
         )
       )
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     } else if (check_names == FALSE & check_log == FALSE){
       showModal(
         modalDialog(
@@ -699,6 +815,9 @@ server <- function(input, output, session) {
           "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm). You also have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
         )
       )
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     } else if (check_log == FALSE & check_numeric == FALSE){
       showModal(
         modalDialog(
@@ -707,6 +826,9 @@ server <- function(input, output, session) {
           "You have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric. You also have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
         )
       )
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     } else if (check_names == FALSE & check_numeric == FALSE){
       showModal(
         modalDialog(
@@ -715,6 +837,9 @@ server <- function(input, output, session) {
           "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm). Additionally, you have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric."
         )
       )
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     } else if(check_names == FALSE){
       showModal(
         modalDialog(
@@ -723,6 +848,9 @@ server <- function(input, output, session) {
           "It appears you are missing or have incorrectly spelled some of the required columns (route_id, month, year, upt, vrm)."
         )
       )
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     } else if(check_log == FALSE){
       showModal(
         modalDialog(
@@ -731,6 +859,9 @@ server <- function(input, output, session) {
           "You have some unacceptable column names that suggest logarithmic values. The modeling process will take the logarithm of any added variables, so please put original values in any extra columns you add."
         )
       )
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     } else if(check_numeric == FALSE){
       showModal(
         modalDialog(
@@ -739,11 +870,14 @@ server <- function(input, output, session) {
           "You have some extra columns that can't be converted to numbers. Any extra columns in the data must be numeric."
         )
       )
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     } else if(check_numeric & check_names) {
       # maybe I should put another notification saying the file looks good
-      showNotification("File Received and Processed",
-                       type = "message",
-                       duration = 1)
+      # showNotification("File Received and Processed",
+      #                  type = "message",
+      #                  duration = 1)
 
       output$rider_data_next_placeholder <- renderUI({
         input_task_button("rider_data_next", "Continue")
@@ -754,6 +888,9 @@ server <- function(input, output, session) {
       showNotification("ERROR: There was an unknown error with your file. Please double check to make sure it follows the correct formatting",
                        type = "error",
                        duration = 15)
+      output$rider_data_next_placeholder <- renderUI({
+        em("*Upload a compatible file to continue")
+      })
     }
 
   }) |>
@@ -896,6 +1033,19 @@ server <- function(input, output, session) {
   #
   # brt_tbl <- data.frame(change_date_brt = "2023-04-14",
   #                       routes_brt = "14")
+
+
+  # Show a preview of the input that was just uploaded
+  output$input_data <- renderDT({
+    req(processed_data())
+    processed_data() |>
+      datatable(rownames = FALSE,
+                options = list(
+        pageLength = 5,                         # Sets default view to 5 rows
+        lengthChange = FALSE,                  # doesn't allow changing the length
+        searching = FALSE                     # doesn't allow searching
+      ))
+  })
 
 
 #### 3. GTFS UPLOAD ####
@@ -1129,7 +1279,7 @@ server <- function(input, output, session) {
                             fare_df = fare_tbl) # TODO: this doesn't seem to be working
   })
 
-  output$tbl_mod_stepwise <- renderDT({
+  output$tbl_mod_stepwise <- render_gt({
     created_model <- first_model() # first model
 
     name_key <- c("VRM" = "log_vrm",
@@ -1172,15 +1322,17 @@ server <- function(input, output, session) {
       left_join(var_table, by = "vars") |>
       select("Variable", "Coeff", "P.value")
 
+    table <- table |>
+      mutate(P.value = as.character(P.value)) |>
+      mutate(P.value = case_when(
+        P.value <= 0.1 & P.value > 0.05  ~ paste0(P.value, "*"),
+        P.value <= 0.05 & P.value > 0.01  ~ paste0(P.value, "**"),
+        P.value <= 0.01  ~ paste0(P.value, "***"),
+        TRUE ~ P.value
+      ))
+
      table |>
-      datatable(selection = "none",
-                options = list(
-                  dom = 't',         # Only show the Table (hides search, paging, etc.)
-                  paging = FALSE,    # Show all data at once
-                  ordering = FALSE,  # Disable column sorting
-                  searching = FALSE,  # Remove the search box
-                  rownames = FALSE
-                ))
+       gt()
   })
 
   # Create the proxy handle for the output table
@@ -1222,9 +1374,9 @@ server <- function(input, output, session) {
 
                  new_vars <- all_vars[all_vars %in% new_selected]
 
-                 updateSelectizeInput(inputId = "variables",
-                                      choices = new_vars,
-                                      selected = new_vars)
+                 # updateSelectizeInput(inputId = "variables",
+                 #                      choices = new_vars,
+                 #                      selected = new_vars)
 
                  updateSelectizeInput(inputId = "variables_forced",
                                       choices = all_vars,
@@ -1235,82 +1387,42 @@ server <- function(input, output, session) {
   # value to make sure the model has been run
   model_ran <- reactiveVal(FALSE)
 
-  # does the stepwise regression when the button is clicked
-  model <- eventReactive(
-    input$run_model_stepwise,
-    ignoreNULL = TRUE,
-    {
-      model_ran(TRUE)
-      req(input$upload_data$datapath)
-      req(acs_data())
-      create_regression_model(data_xlsx = processed_data(),
-                              acs_data = acs_data(),
-                              gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
-                              variables = input$variables,
-                              fare_df = fare_tbl())
-    })
+  model_forced <- reactiveVal(NULL)
 
-  # creates the regression model when the button is clicked (does not get rid of any coefficients)
-  model_forced <- eventReactive(
-    input$run_model_forced,
-    ignoreNULL = TRUE,
-    {
-      req(input$upload_data$datapath)
-      req(acs_data())
-      create_regression_model_forced(data_xlsx = processed_data(),
-                              acs_data = acs_data(),
-                              gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
-                              variables = input$variables_forced,
-                              fare_df = fare_tbl())
-    })
-
-  # Use the proxy to swap in updated data frame
-  observeEvent(input$run_model_stepwise, {
-
-    created_model <- model()
-
-    name_key <- c("VRM" = "log_vrm",
-                  "February" = "factor(month)2",
-                  "March" = "factor(month)3",
-                  "April" = "factor(month)4",
-                  "May" = "factor(month)5",
-                  "June" = "factor(month)6",
-                  "July" = "factor(month)7",
-                  "August" = "factor(month)8",
-                  "September" = "factor(month)9",
-                  "October" = "factor(month)10",
-                  "November" = "factor(month)11",
-                  "December" = "factor(month)12",
-                  "Year" = "year_cent",
-                  "Year Squared" = "I(year_cent^2)",
-                  "Gas Price" = "log_gas_price",
-                  "% No Vehicle Households" = "log_perc_hshlds_noveh",
-                  "% Workers Below Federal Poverty Line" = "log_below_fpl",
-                  "% Commuting by Car" = "log_perc_car",
-                  "% Commuting by Taxi" = "log_perc_taxicab",
-                  "% Work From Home" = "log_perc_wfh",
-                  "% Female Workers" = "log_perc_female",
-                  "% Workers Between 100-150% of Federal Povery Level" = "log_fpl_100_150",
-                  "% Workers in Renter Occupied Housing Units" = "log_perc_renter_occupied",
-                  "Labor Participation Rate" = "log_labor_part_rate",
-                  "Unemployment Rate" = "log_unemp_rate",
-                  "Is Bus Rapid Transit" = "brtTRUE",
-                  "Fare" = "log_fare",
-                  addnl_vars())
-
-    vars <- names(name_key[name_key %in% names(created_model$coefficients)])
-
-    new_coeff_df <-  data.frame("Variable" = vars,
-                                "Coeff" = round(created_model$coefficients, 3),
-                                "P-value" = round(fixest::pvalue(created_model), 3))
-
-    rownames(new_coeff_df) <- NULL
-
-    replaceData(proxy, new_coeff_df, resetPaging = FALSE)
+  observeEvent(input$run_model_stepwise,
+               ignoreNULL = TRUE,
+               {
+    model_ran(TRUE)
+    req(input$upload_data$datapath)
+    req(acs_data())
+    mod <- create_regression_model(data_xlsx = processed_data(),
+                            acs_data = acs_data(),
+                            gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
+                            variables = input$variables_forced,
+                            fare_df = fare_tbl())
+    model_forced(mod)
   })
 
+
+  observeEvent(input$run_model_forced,
+               ignoreNULL = TRUE,
+               {
+    req(input$upload_data$datapath)
+    req(acs_data())
+
+    mod <- create_regression_model_forced(data_xlsx = processed_data(),
+                                          acs_data = acs_data(),
+                                          gas_csv = "data/Midwest_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv",
+                                          variables = input$variables_forced,
+                                          fare_df = fare_tbl())
+    model_forced(mod)
+  })
+
+
   # show the coefficients that were generated from regression model function
-  output$tbl_mod_forced <- renderDT({
+  output$tbl_mod_forced <- render_gt({
+    req(model_forced())
+
     created_model <- model_forced()
 
     name_key <- c("VRM" = "log_vrm",
@@ -1353,14 +1465,35 @@ server <- function(input, output, session) {
     coef_table |>
       left_join(var_table, by = "vars") |>
       select("Variable", "Coeff", "P.value") |>
-      datatable(selection = "none",
-                options = list(
-                  dom = 't',         # Only show the Table (hides search, paging, etc.)
-                  paging = FALSE,    # Show all data at once
-                  ordering = FALSE,  # Disable column sorting
-                  searching = FALSE,  # Remove the search box
-                  rownames = FALSE
-                ))
+      gt() |>
+      # when it is above 10% threshold
+      tab_style(
+        style = cell_fill(color = "#FEFFEB"),
+        locations = cells_body(rows = P.value > 0.1)
+      ) |>
+      # when it is below 10% but above 5% threshold
+      tab_style(
+        style = cell_fill(color = "#FFFFFF"),
+        locations = cells_body(rows = P.value <= .1 & P.value > .05)
+      ) |>
+      # when it is below 5% but above 1% threshold
+      tab_style(
+        style = cell_fill(color = "#F2FFF9"),
+        locations = cells_body(rows = P.value <= .05 & P.value > .01)
+      ) |>
+      # when it is below 1% threshold
+      tab_style(
+        style = cell_fill(color = "#E6FFF2"),
+        locations = cells_body(rows = P.value <= .01)
+      )
+      # datatable(selection = "none",
+      #           options = list(
+      #             dom = 't',         # Only show the Table (hides search, paging, etc.)
+      #             paging = FALSE,    # Show all data at once
+      #             ordering = FALSE,  # Disable column sorting
+      #             searching = FALSE,  # Remove the search box
+      #             rownames = FALSE
+      #           ))
   })
 
   selected_model <- reactiveVal(NULL)
@@ -1368,11 +1501,13 @@ server <- function(input, output, session) {
   observeEvent(input$use_this_model_button, {
     req(first_model())
 
-    if (model_ran() == FALSE){ # if the second model was not run, then use the first model
-      m <- isolate(first_model())
-    } else{
-      m <- isolate(model())
-    }
+    # if (model_ran() == FALSE){ # if the second model was not run, then use the first model
+    #   m <- isolate(first_model())
+    # } else{
+    #   m <- isolate(model())
+    # }
+
+    m <- isolate(first_model())
 
     selected_model(m)
 
@@ -1427,57 +1562,58 @@ server <- function(input, output, session) {
 
   })
 
-  observe({
-    req(first_model())
-
-    if ("brt" %in% names(final_coefs())){
-      output$brt_question_placeholder <- renderUI({
-        radioButtons(
-          inputId = "brt_question",
-          label = "Do you plan to convert any of your routes to BRT?",
-          choices = list("No" = "no","Yes" = "yes"),
-          selected = "no",
-          inline = TRUE
-        )
-      })
-    }
-  }) |>
-    bindEvent(input$use_this_model_button)
-
-  observe({
-    req(first_model())
-
-    if ("brt" %in% names(final_coefs())){
-      output$brt_question_placeholder <- renderUI({
-        radioButtons(
-          inputId = "brt_question",
-          label = "Do you plan to convert any of your routes to BRT?",
-          choices = list("No" = "no","Yes" = "yes"),
-          selected = "no",
-          inline = TRUE
-        )
-      })
-    }
-  }) |>
-    bindEvent(input$use_this_model_button_forced)
+  # TODO: Delete the below code once I know my other method is working
+  # observe({
+  #   req(first_model())
+  #
+  #   if ("brt" %in% names(final_coefs())){
+  #     output$brt_question_placeholder <- renderUI({
+  #       radioButtons(
+  #         inputId = "brt_question",
+  #         label = "Do you plan to convert any of your routes to BRT?",
+  #         choices = list("No" = "no","Yes" = "yes"),
+  #         selected = "no",
+  #         inline = TRUE
+  #       )
+  #     })
+  #   }
+  # }) |>
+  #   bindEvent(input$use_this_model_button)
+  #
+  # observe({
+  #   req(first_model())
+  #
+  #   if ("brt" %in% names(final_coefs())){
+  #     output$brt_question_placeholder <- renderUI({
+  #       radioButtons(
+  #         inputId = "brt_question",
+  #         label = "Do you plan to convert any of your routes to BRT?",
+  #         choices = list("No" = "no","Yes" = "yes"),
+  #         selected = "no",
+  #         inline = TRUE
+  #       )
+  #     })
+  #   }
+  # }) |>
+  #   bindEvent(input$use_this_model_button_forced)
 
   # If BRT check is clicked, or if the model has a brt in it,
   # then ask if they plan to have any more brt conversions
-  observe({
-    if ("brt" %in% input$forced_coef_checkbox){
-      output$brt_question_placeholder <- renderUI({
-        radioButtons(
-          inputId = "brt_question",
-          label = "Do you plan to convert any of your routes to BRT?",
-          choices = list("No" = "no","Yes" = "yes"),
-          selected = "no",
-          inline = TRUE
-        )
-      })
-    }
-
-  }) |>
-    bindEvent(input$forced_coef_checkbox)
+  # observe({
+  #   if ("brt" %in% input$forced_coef_checkbox){
+  #     output$brt_question_placeholder <- renderUI({
+  #       radioButtons(
+  #         inputId = "brt_question",
+  #         label = "Do you plan to convert any of your routes to BRT?",
+  #         choices = list("No" = "no","Yes" = "yes"),
+  #         selected = "no",
+  #         inline = TRUE
+  #       )
+  #     })
+  #   }
+  #
+  # }) |>
+  #   bindEvent(input$forced_coef_checkbox)
 
 
   ##### BRT CHNAGES CODE #####
@@ -1817,10 +1953,11 @@ server <- function(input, output, session) {
     pending$mode <- NULL
   })
 
-  # Optional: view saved scenarios
+  # view saved scenarios
   output$dtSavedScenarios <- renderDT({
     req(saved$by_route)
-    datatable(saved$by_route, options = list(pageLength = 25))
+    datatable(saved$by_route, options = list(pageLength = 25),
+              rownames = FALSE)
   })
 
 
@@ -1968,7 +2105,34 @@ server <- function(input, output, session) {
     req(forcast_preview())
     df <- forecast_df()
     plot_forecast(df, route = input$input_route_to_plot)
-  })
+  }, res = 120)
+
+  # go to the next tab when clicked
+  observe({
+    bslib::nav_select("main_nav", "pan_8")
+  }) |>
+    bindEvent(input$go_to_export)
+
+  # Handle the ZIP download
+  output$download_plots <- downloadHandler(
+    filename = function() {
+      paste0("ridership_plots_", Sys.Date(), ".zip")
+    },
+    content = function(file) {
+      req(forecast_df())
+
+      forecast_df <- forecast_df()
+      routes <- c(unique(forecast_df$route_id),"all_routes")
+
+      files_to_zip <- get_files_to_zip(forecast_df, routes)
+
+      # Zip the files. 'file' is the target path Shiny provides for the final download.
+      # use zip::zip() or R's native utils::zip()
+      utils::zip(zipfile = file, files = files_to_zip, flags = "-j")
+      # Note: The "-j" flag junk-paths, meaning it zips just the files without keeping the absolute temp folder structure
+    },
+    contentType = "application/zip"
+  )
 
 
 #### 8. FINAL DOWNLOAD PAGE ####
