@@ -135,7 +135,8 @@ nav_panel(
                     div(
                       style = "display:flex; gap:.5rem; flex-wrap:wrap;",
                       actionButton("add", "Submit fare increase", class = "btn-primary"),
-                      actionButton("delete", "Delete selected fare row", class = "btn-danger")
+                      "You may select a row from the table below if you want to delete it.",
+                      actionButton("delete", "Delete selected row in fare table", class = "btn-danger")
                     )
                     ),
           conditionalPanel(
@@ -158,7 +159,7 @@ nav_panel(
           h5("Input Data Example"),
 
           # tableOutput(outputId = "example_input"),
-          tags$img(src = "data_example.png",),
+          tags$img(src = "dataexample.png",),
           "The uploaded data must match the format shown above",
           "The column names must match exactly.",
           "If you have routes classified as Bus Rapid Transit, you may optionally add a brt column.",
@@ -277,41 +278,41 @@ nav_panel(
 
               - *VRM (required in model):*
 
-              - *Month (required in model):*
+              - *Month (required in model)*
 
-              - *Year (required in model):*
+              - *Year (required in model)*
 
-              - *Optional variables uploaded by agency*
+              - *Additional variables uploaded by agency (optional)*
 
               ***Retrieved from Census***
 
-              - *var:*
+              - *Gas price at the regional level (US Energy Information Administration)*
 
-              - *var:*
+              - *Total workers 16 years and over (American Community Survey)*
 
-              - *var:*
+              - *Number of workers working from home (American Community Survey)*
 
-              - *var:*
+              - *Number of workers commuting by taxicab, motorcycle or other means (American Community Survey)*
 
-              - *var:*
+              - *Number of workers commuting by car (American Community Survey)*
 
-              - *var:*
+              - *Number of households with no vehicle available (American Community Survey)*
 
-              - *var:*
+              - *Number of workers with no vehicle available (American Community Survey)*
 
-              - *var:*
+              - *Percent of workers who are below 100 percent of the poverty level (American Community Survey)*
 
-              - *var:*
+              - *Percent of workers who are between 100 to 149 percent of the poverty level (American Community Survey)*
 
-              - *var:*
+              - *Percent of workers who are female (American Community Survey)*
 
-              - *var:*
+              - *Percent workers in households in renter-occupied housing units (American Community Survey)*
 
-              - *var:*
+              - *Total population per census tract (American Community Survey)*
 
-              - *var:*
+              - *Labor force participation rate per census tract (American Community Survey)*
 
-              - *var:*
+              - *Unemployment rate per census tract (American Community Survey)*
                        "
               )
             )

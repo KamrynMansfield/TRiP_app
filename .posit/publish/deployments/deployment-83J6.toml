@@ -2,7 +2,7 @@
 "$schema" = "https://cdn.posit.co/publisher/schemas/posit-publishing-record-schema-v3.json"
 server_type = "connect_cloud"
 server_url = "https://connect.posit.cloud"
-client_version = "2.8.0"
+client_version = "2.12.0"
 created_at = "2026-07-17T18:06:43.613Z"
 type = "r-shiny"
 configuration_name = "TRiP_app-P3JT"
@@ -10,8 +10,8 @@ id = "019f7142-d057-c4b5-68a3-3421b30aab9e"
 dashboard_url = "https://connect.posit.cloud/kamrynmansfield/content/019f7142-d057-c4b5-68a3-3421b30aab9e"
 direct_url = "https://019f7142-d057-c4b5-68a3-3421b30aab9e.share.connect.posit.cloud"
 logs_url = "https://connect.posit.cloud/kamrynmansfield/content/019f7142-d057-c4b5-68a3-3421b30aab9e/history"
-deployed_at = "2026-08-12T04:00:29.187Z"
-bundle_id = "019ff41f-bf69-20ee-aaa1-adba57f5631b"
+deployed_at = "2026-08-31T17:47:21.376Z"
+bundle_id = "01a058ed-6640-2dfe-cc39-6dcc557e5238"
 files = [
     ".posit/publish/TRiP_app-P3JT.toml",
     ".posit/publish/deployments/deployment-83J6.toml",
@@ -20,10 +20,12 @@ files = [
     "R/create_final_acs_data.R",
     "R/create_intersecting_tract_percentages.R",
     "R/create_regression_model.R",
+    "R/create_regression_model_forced.R",
     "R/find_overlapping_counties.R",
     "R/forecast_ridership.R",
     "R/get_crs.R",
     "R/get_elasticity_varaibles.R",
+    "R/get_files_to_zip.R",
     "R/get_gtfs_routes.R",
     "R/get_tract_geometry.R",
     "R/load_libraries.R",
@@ -40,7 +42,7 @@ files = [
     "data/state_planes_crs.rda",
     "data/us_counties.rds",
     "data/~$data_example.xlsx",
-    "www/data_example.png",
+    "www/dataexample.png",
 ]
 
 [connect_cloud]
@@ -204,11 +206,11 @@ repository = "CRAN"
 
 [renv.packages.MASS]
 package = "MASS"
-version = "7.3-65"
+version = "7.3-66"
 source = "Repository"
 priority = "recommended"
-date = "2025-02-19"
-revision = "$Rev: 3681 $"
+date = "2026-07-15"
+revision = "$Rev: 3693 $"
 depends = [
     "R (>= 4.4.0)",
     "grDevices",
@@ -3615,6 +3617,48 @@ author = "Joe Cheng [aut], Barret Schloerke [aut] (ORCID: <https://orcid.org/000
 maintainer = "Garrick Aden-Buie <garrick@posit.co>"
 repository = "CRAN"
 
+[renv.packages."leaflet.extras2"]
+package = "leaflet.extras2"
+version = "1.3.2"
+source = "Repository"
+type = "Package"
+title = "Extra Functionality for 'leaflet' Package"
+"authors@r" = "c( person(\"Gatscha\", \"Sebastian\", email = \"sebastian_gatscha@gmx.at\", role = c(\"aut\", \"cre\")), person(\"Ricardo Rodrigo\", \"Basa\", email = \"radbasa@gmail.com\", role = c(\"ctb\")), person(c(\"Jeffrey\", \"O\"), \"Hanson\", email = \"jeffrey.hanson@uqconnect.edu.au\", role = c(\"ctb\"), comment = c(ORCID = \"0000-0002-4716-6134\")) )"
+description = "Several 'leaflet' plugins are integrated, which are available as extension to the 'leaflet' package."
+license = "GPL-3 | file LICENSE"
+encoding = "UTF-8"
+lazy_data = "true"
+depends = [
+    "R (>= 3.5.0)",
+    "leaflet (>= 2.0.0)",
+]
+imports = [
+    "htmltools",
+    "magrittr",
+    "utils",
+]
+suggests = [
+    "jsonlite",
+    "shiny",
+    "sf",
+    "yyjsonr",
+    "sp",
+    "testthat (>= 3.1.7)",
+    "fontawesome",
+    "htmlwidgets",
+    "grDevices",
+    "xfun",
+    "covr",
+    "curl",
+]
+url = "https://trafficonese.github.io/leaflet.extras2/, https://github.com/trafficonese/leaflet.extras2"
+bug_reports = "https://github.com/trafficonese/leaflet.extras2/issues"
+roxygen_note = "7.3.2"
+needs_compilation = "no"
+author = "Gatscha Sebastian [aut, cre], Ricardo Rodrigo Basa [ctb], Jeffrey O Hanson [ctb] (ORCID: <https://orcid.org/0000-0002-4716-6134>)"
+maintainer = "Gatscha Sebastian <sebastian_gatscha@gmx.at>"
+repository = "CRAN"
+
 [renv.packages."leaflet.providers"]
 package = "leaflet.providers"
 version = "2.0.0"
@@ -4135,10 +4179,10 @@ repository = "CRAN"
 
 [renv.packages.nnet]
 package = "nnet"
-version = "7.3-20"
+version = "7.3-21"
 source = "Repository"
 priority = "recommended"
-date = "2025-01-01"
+date = "2026-08-01"
 depends = [
     "R (>= 3.0.0)",
     "stats",
@@ -4313,6 +4357,64 @@ roxygen_note = "6.1.1"
 needs_compilation = "no"
 author = "Tyler Rinker [aut, cre, ctb], Dason Kurkiewicz [aut, ctb], Keith Hughitt [ctb], Albert Wang [ctb], Garrick Aden-Buie [ctb], Albert Wang [ctb], Lukas Burk [ctb]"
 maintainer = "Tyler Rinker <tyler.rinker@gmail.com>"
+repository = "CRAN"
+
+[renv.packages.pak]
+package = "pak"
+version = "0.11.1"
+source = "Repository"
+title = "Another Approach to Package Installation"
+"authors@r" = "c( person(\"Gábor\", \"Csárdi\", , \"csardi.gabor@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Jim\", \"Hester\", role = \"aut\"), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"), comment = c(ROR = \"03wc8by49\")), person(\"Winston\", \"Chang\", role = \"ctb\", comment = \"R6, callr, processx\"), person(\"Ascent Digital Services\", role = c(\"cph\", \"fnd\"), comment = \"callr, processx\"), person(\"Hadley\", \"Wickham\", role = c(\"ctb\", \"cph\"), comment = \"cli, curl, pkgbuild, yaml\"), person(\"Jeroen\", \"Ooms\", role = \"ctb\", comment = \"curl, jsonlite\"), person(\"Maëlle\", \"Salmon\", role = \"ctb\", comment = \"desc, pkgsearch\"), person(\"Duncan\", \"Temple Lang\", role = \"ctb\", comment = \"jsonlite\"), person(\"Lloyd\", \"Hilaiel\", role = \"cph\", comment = \"jsonlite\"), person(\"Alec\", \"Wong\", role = \"ctb\", comment = \"keyring\"), person(\"Michel Berkelaar and lpSolve authors\", role = \"ctb\", comment = \"lpSolve\"), person(\"R Consortium\", role = \"fnd\", comment = \"pkgsearch\"), person(\"Jay\", \"Loden\", role = \"ctb\", comment = \"ps\"), person(\"Dave\", \"Daeschler\", role = \"ctb\", comment = \"ps\"), person(\"Giampaolo\", \"Rodola\", role = \"ctb\", comment = \"ps\"), person(\"Shawn\", \"Garbett\", role = \"ctb\", comment = \"yaml\"), person(\"Jeremy\", \"Stephens\", role = \"ctb\", comment = \"yaml\"), person(\"Kirill\", \"Simonov\", role = \"ctb\", comment = \"yaml\"), person(\"Yihui\", \"Xie\", role = \"ctb\", comment = \"yaml\"), person(\"Zhuoer\", \"Dong\", role = \"ctb\", comment = \"yaml\"), person(\"Jeffrey\", \"Horner\", role = \"ctb\", comment = \"yaml\"), person(\"Will\", \"Beasley\", role = \"ctb\", comment = \"yaml\"), person(\"Brendan\", \"O'Connor\", role = \"ctb\", comment = \"yaml\"), person(\"Gregory\", \"Warnes\", role = \"ctb\", comment = \"yaml\"), person(\"Michael\", \"Quinn\", role = \"ctb\", comment = \"yaml\"), person(\"Zhian\", \"Kamvar\", role = \"ctb\", comment = \"yaml\"), person(\"Charlie\", \"Gao\", role = \"ctb\", comment = \"yaml\"), person(\"Kuba\", \"Podgórski\", role = \"ctb\", comment = \"zip\"), person(\"Rich\", \"Geldreich\", role = \"ctb\", comment = \"zip\") )"
+description = "The goal of 'pak' is to make package installation faster and more reliable. In particular, it performs all HTTP operations in parallel, so metadata resolution and package downloads are fast. Metadata and package files are cached on the local disk as well. 'pak' has a dependency solver, so it finds version conflicts before performing the installation. This version of 'pak' supports CRAN, 'Bioconductor' and 'GitHub' packages as well."
+license = "GPL-3"
+url = "https://pak.r-lib.org/, https://github.com/r-lib/pak"
+bug_reports = "https://github.com/r-lib/pak/issues"
+depends = [
+    "R (>= 3.5)",
+]
+imports = [
+    "tools",
+    "utils",
+]
+suggests = [
+    "callr (>= 3.7.0)",
+    "cli (>= 3.2.0)",
+    "covr",
+    "curl (>= 4.3.2)",
+    "desc (>= 1.4.1)",
+    "filelock (>= 1.0.2)",
+    "gitcreds",
+    "glue (>= 1.6.2)",
+    "jsonlite (>= 1.8.0)",
+    "keyring (>= 1.4.0)",
+    "pingr",
+    "pkgbuild (>= 1.4.2)",
+    "pkgcache (>= 2.2.4)",
+    "pkgdepends (>= 0.9.0)",
+    "pkgload",
+    "pkgsearch (>= 3.1.0)",
+    "processx (>= 3.8.1)",
+    "ps (>= 1.6.0)",
+    "rstudioapi",
+    "testthat (>= 3.2.0)",
+    "webfakes",
+    "withr",
+    "yaml",
+]
+biarch = "true"
+byte_compile = "true"
+"config/build/extra-sources" = "configure*"
+"config/needs/dependencies" = "callr, cli, curl, desc, filelock, jsonlite, keyring, lpSolve, pkgbuild, r-lib/pkgcache@feature/ppm-sso, r-lib/pkgdepends, pkgsearch, processx, ps, r-lib/tsitter, gaborcsardi/tstoml, yaml"
+"config/needs/website" = "r-lib/asciicast, rmarkdown, roxygen2, tidyverse/tidytemplate"
+"config/needs/deploy" = "cli (>= 3.2.0), curl, desc, gitcreds, glue@1.6.2, gaborcsardi/jsonlite, processx, R6@2.5.1"
+"config/needs/check" = "r-lib/pkgcache@feature/ppm-sso"
+"config/testthat/edition" = "3"
+"config/usethis/last-upkeep" = "2025-05-13"
+encoding = "UTF-8"
+"config/roxygen2/version" = "8.0.0"
+needs_compilation = "yes"
+author = "Gábor Csárdi [aut, cre], Jim Hester [aut], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>), Winston Chang [ctb] (R6, callr, processx), Ascent Digital Services [cph, fnd] (callr, processx), Hadley Wickham [ctb, cph] (cli, curl, pkgbuild, yaml), Jeroen Ooms [ctb] (curl, jsonlite), Maëlle Salmon [ctb] (desc, pkgsearch), Duncan Temple Lang [ctb] (jsonlite), Lloyd Hilaiel [cph] (jsonlite), Alec Wong [ctb] (keyring), Michel Berkelaar and lpSolve authors [ctb] (lpSolve), R Consortium [fnd] (pkgsearch), Jay Loden [ctb] (ps), Dave Daeschler [ctb] (ps), Giampaolo Rodola [ctb] (ps), Shawn Garbett [ctb] (yaml), Jeremy Stephens [ctb] (yaml), Kirill Simonov [ctb] (yaml), Yihui Xie [ctb] (yaml), Zhuoer Dong [ctb] (yaml), Jeffrey Horner [ctb] (yaml), Will Beasley [ctb] (yaml), Brendan O'Connor [ctb] (yaml), Gregory Warnes [ctb] (yaml), Michael Quinn [ctb] (yaml), Zhian Kamvar [ctb] (yaml), Charlie Gao [ctb] (yaml), Kuba Podgórski [ctb] (zip), Rich Geldreich [ctb] (zip)"
+maintainer = "Gábor Csárdi <csardi.gabor@gmail.com>"
 repository = "CRAN"
 
 [renv.packages.parameters]
@@ -4724,6 +4826,83 @@ url = "https://github.com/r-lib/pkgconfig#readme"
 bug_reports = "https://github.com/r-lib/pkgconfig/issues"
 encoding = "UTF-8"
 needs_compilation = "no"
+repository = "CRAN"
+
+[renv.packages.plotly]
+package = "plotly"
+version = "4.12.0"
+source = "Repository"
+title = "Create Interactive Web Graphics via 'plotly.js'"
+"authors@r" = "c(person(\"Carson\", \"Sievert\", role = c(\"aut\", \"cre\"), email = \"cpsievert1@gmail.com\", comment = c(ORCID = \"0000-0002-4958-2844\")), person(\"Chris\", \"Parmer\", role = \"aut\", email = \"chris@plot.ly\"), person(\"Toby\", \"Hocking\", role = \"aut\", email = \"tdhock5@gmail.com\"), person(\"Scott\", \"Chamberlain\", role = \"aut\", email = \"myrmecocystus@gmail.com\"), person(\"Karthik\", \"Ram\", role = \"aut\", email = \"karthik.ram@gmail.com\"), person(\"Marianne\", \"Corvellec\", role = \"aut\", email = \"marianne.corvellec@igdore.org\", comment = c(ORCID = \"0000-0002-1994-3581\")), person(\"Pedro\", \"Despouy\", role = \"aut\", email = \"pedro@plot.ly\"), person(\"Salim\", \"Brüggemann\", role = \"ctb\", email = \"salim-b@pm.me\", comment = c(ORCID = \"0000-0002-5329-5987\")), person(\"Plotly Technologies Inc.\", role = \"cph\"))"
+license = "MIT + file LICENSE"
+description = "Create interactive web graphics from 'ggplot2' graphs and/or a custom interface to the (MIT-licensed) JavaScript library 'plotly.js' inspired by the grammar of graphics."
+url = "https://plotly-r.com, https://github.com/plotly/plotly.R, https://plotly.com/r/"
+bug_reports = "https://github.com/plotly/plotly.R/issues"
+depends = [
+    "R (>= 3.5.0)",
+    "ggplot2 (>= 3.0.0)",
+]
+imports = [
+    "tools",
+    "scales",
+    "httr (>= 1.3.0)",
+    "jsonlite (>= 1.6)",
+    "magrittr",
+    "digest",
+    "viridisLite",
+    "base64enc",
+    "htmltools (>= 0.3.6)",
+    "htmlwidgets (>= 1.5.2.9001)",
+    "tidyr (>= 1.0.0)",
+    "RColorBrewer",
+    "dplyr",
+    "vctrs",
+    "tibble",
+    "lazyeval (>= 0.2.0)",
+    "rlang (>= 1.0.0)",
+    "crosstalk",
+    "purrr",
+    "data.table",
+    "promises",
+]
+suggests = [
+    "MASS",
+    "maps",
+    "hexbin",
+    "ggthemes",
+    "GGally",
+    "ggalluvial",
+    "testthat",
+    "knitr",
+    "shiny (>= 1.1.0)",
+    "shinytest2",
+    "curl",
+    "rmarkdown",
+    "Cairo",
+    "broom",
+    "webshot",
+    "listviewer",
+    "dendextend",
+    "sf",
+    "png",
+    "IRdisplay",
+    "processx",
+    "plotlyGeoAssets",
+    "forcats",
+    "withr",
+    "palmerpenguins",
+    "rversions",
+    "reticulate",
+    "rsvg",
+    "ggridges",
+]
+lazy_data = "true"
+roxygen_note = "7.3.3"
+encoding = "UTF-8"
+"config/needs/check" = "tidyverse/ggplot2, ggobi/GGally, rcmdcheck, devtools, reshape2, s2"
+needs_compilation = "no"
+author = "Carson Sievert [aut, cre] (ORCID: <https://orcid.org/0000-0002-4958-2844>), Chris Parmer [aut], Toby Hocking [aut], Scott Chamberlain [aut], Karthik Ram [aut], Marianne Corvellec [aut] (ORCID: <https://orcid.org/0000-0002-1994-3581>), Pedro Despouy [aut], Salim Brüggemann [ctb] (ORCID: <https://orcid.org/0000-0002-5329-5987>), Plotly Technologies Inc. [cph]"
+maintainer = "Carson Sievert <cpsievert1@gmail.com>"
 repository = "CRAN"
 
 [renv.packages.png]
